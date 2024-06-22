@@ -58,6 +58,7 @@ var definitions = map[OpCode]*OpDefinition{
 	OpConstant: {"OpConstant", []int{2}},
 }
 
+// Book passes a byte as code, I pass the OpCode
 func Lookup(code OpCode) (*OpDefinition, error) {
 	var e error = nil
 
@@ -97,7 +98,6 @@ func Make(code OpCode, operands ...int) Instruction {
 			result[offset] = uint8(operand)
 		case 2:
 			binary.BigEndian.PutUint16(result[offset:], uint16(operand))
-			break
 		}
 
 		offset += definition.OperandWidths[i]

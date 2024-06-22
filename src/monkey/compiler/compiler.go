@@ -1,6 +1,7 @@
 package compiler
 
 import (
+	"fmt"
 	"monkey/ast"
 	"monkey/object"
 	"monkey/opcode"
@@ -23,49 +24,57 @@ func New() *Compiler {
 	}
 }
 
-func (c *Compiler) Compile(node ast.Node) error {
+func (c *Compiler) Compile(node ast.Node) {
 	switch node := node.(type) {
 	case *ast.Program:
 		for _, statement := range node.Statements {
-			err := c.Compile(statement)
-			if err != nil {
-				return err
-			}
-		}
-	case *ast.ExpressionStatement:
-		err := c.Compile(node.Expression)
-		if err != nil {
-			return err
-		}
-	case *ast.InfixExpression:
-		err := c.Compile(node.Left)
-		if err != nil {
-			return err
+			c.Compile(statement)
 		}
 
-		err = c.Compile(node.Right)
-		if err != nil {
-			return err
+	case *ast.ExpressionStatement:
+		c.Compile(node.Expression)
+
+	case *ast.InfixExpression:
+		c.Compile(node.Left)
+
+		c.Compile(node.Right)
+
+		switch node.Operator {
+		case "+":
+			c.emit(opcode.OpAdd)
+
+		default:
+			panic(fmt.Sprintf("Invalid infix operator: %q", node.Operator))
 		}
+
 	case *ast.IntegerLiteral:
 		integer := &object.Integer{Value: node.Value}
 
 		c.addConstant(integer)
-	}
 
-	return nil
+	default:
+		panic(fmt.Sprintf("Invalid node type: %T", node))
+	}
 }
 
-func (c *Compiler) addConstant(constant object.Object) {
-	index := len(c.constants)
-
-	bytecode := opcode.Make(opcode.OpConstant, index)
-
-	c.constants = append(c.constants, constant)
+func (c *Compiler) emit(op opcode.OpCode, operands ...int) {
+	bytecode := opcode.Make(op, operands...)
 
 	for _, b := range bytecode {
 		c.instructions = append(c.instructions, b)
 	}
+}
+
+func (c *Compiler) addConstant(constant object.Object) int {
+	constantIndex := len(c.constants)
+
+	c.constants = append(c.constants, constant)
+
+	instructionIndex := len(c.instructions)
+
+	c.emit(opcode.OpConstant, constantIndex)
+
+	return instructionIndex
 }
 
 func (c *Compiler) Bytecode() *Bytecode {

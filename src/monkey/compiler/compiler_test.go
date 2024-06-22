@@ -29,17 +29,13 @@ func runCompilerTests(t *testing.T, tests []compilerTestCase) {
 		program := parse(test.input)
 
 		compiler := New()
-		err := compiler.Compile(program)
-
-		if err != nil {
-			t.Fatalf("compiler error: %s\n", err)
-		}
+		compiler.Compile(program)
 
 		bytecode := compiler.Bytecode()
 
-		concatenated_instructions := concatInstructions(test.expectedInstructions)
+		concatenatedInstructions := concatInstructions(test.expectedInstructions)
 
-		err = testInstructions(concatenated_instructions, bytecode.Instructions)
+		err := testInstructions(concatenatedInstructions, bytecode.Instructions)
 		if err != nil {
 			t.Fatalf("testInstructions failed: %s\n", err)
 		}
@@ -69,6 +65,7 @@ func TestIntegerArithmetic(t *testing.T) {
 			expectedInstructions: []opcode.Instruction{
 				opcode.Make(opcode.OpConstant, 0),
 				opcode.Make(opcode.OpConstant, 1),
+				opcode.Make(opcode.OpAdd),
 			},
 		},
 	}

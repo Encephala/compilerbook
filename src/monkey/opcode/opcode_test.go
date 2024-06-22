@@ -9,6 +9,7 @@ func TestMake(t *testing.T) {
 		expected []byte
 	}{
 		{OpConstant, []int{65534}, []byte{byte(OpConstant), 255, 254}},
+		{OpAdd, []int{}, []byte{byte(OpAdd)}},
 	}
 
 	for _, test := range tests {
@@ -34,14 +35,14 @@ func TestMake(t *testing.T) {
 
 func TestInstructionsString(t *testing.T) {
 	instructions := []Instruction{
-		Make(OpConstant, 1),
+		Make(OpAdd),
 		Make(OpConstant, 2),
 		Make(OpConstant, 65535),
 	}
 
-	expected := `0000 OpConstant 1
-0003 OpConstant 2
-0006 OpConstant 65535
+	expected := `0000 OpAdd
+0001 OpConstant 2
+0004 OpConstant 65535
 `
 
 	concatenated := Instructions{}
@@ -69,10 +70,7 @@ func TestReadOperands(t *testing.T) {
 	for _, test := range tests {
 		instruction := Make(test.code, test.operands...)
 
-		definition, err := Lookup(test.code)
-		if err != nil {
-			t.Fatalf("definition not found: %q\n", err)
-		}
+		definition := Lookup(test.code)
 
 		operandsRead, bytesRead := ReadOperands(definition, instruction[1:])
 		if bytesRead != test.bytesRead {

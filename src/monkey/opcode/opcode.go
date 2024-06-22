@@ -14,11 +14,7 @@ func (instructions Instructions) String() string {
 
 	offset := 0
 	for offset < len(instructions) {
-		definition, err := Lookup(OpCode(instructions[offset]))
-		if err != nil {
-			fmt.Fprintf(&out, "ERROR: %s\n", err)
-			continue
-		}
+		definition := Lookup(OpCode(instructions[offset]))
 
 		operands, read := ReadOperands(definition, instructions[offset+1:])
 
@@ -35,17 +31,21 @@ func (instructions Instructions) String() string {
 
 func fmtInstruction(definition *OpDefinition, operands []int) string {
 	switch len(operands) {
+	case 0:
+		return definition.Name
 	case 1:
 		return fmt.Sprintf("%s %d", definition.Name, operands[0])
-	}
 
-	return fmt.Sprintf("ERROR: unhandled operandCount for %s\n", definition.Name)
+	default:
+		panic(fmt.Sprintf("Invalid operand count %d for %s\n", len(operands), definition.Name))
+	}
 }
 
 type OpCode byte
 
 const (
 	OpConstant OpCode = iota
+	OpAdd
 )
 
 type OpDefinition struct {
@@ -56,31 +56,21 @@ type OpDefinition struct {
 var definitions = map[OpCode]*OpDefinition{
 	// Takes two bytes, so up to 65536 constants may be defined
 	OpConstant: {"OpConstant", []int{2}},
+	OpAdd:      {"OpAdd", []int{}},
 }
 
 // Book passes a byte as code, I pass the OpCode
-func Lookup(code OpCode) (*OpDefinition, error) {
-	var e error = nil
-
+func Lookup(code OpCode) *OpDefinition {
 	result, ok := definitions[code]
 	if !ok {
-		e = fmt.Errorf("opcode %d undefined", code)
+		panic(fmt.Sprintf("Opcode %d has not been defined", code))
 	}
 
-	return result, e
+	return result
 }
 
 func Make(code OpCode, operands ...int) Instruction {
-	definition, err := Lookup(code)
-
-	if err != nil {
-		// There's probably a better way to handle constant not existing error
-		// than returning empty, but whatever?
-		// To be fair (as book points out)
-		// Only matters for testing/debugging, as we're the only ones actually calling this function
-		// Tests will catch this faulty behaviour
-		return Instruction{}
-	}
+	definition := Lookup(code)
 
 	instructionsLength := 1
 	for _, length := range definition.OperandWidths {
@@ -96,8 +86,12 @@ func Make(code OpCode, operands ...int) Instruction {
 		switch definition.OperandWidths[i] {
 		case 1:
 			result[offset] = uint8(operand)
+
 		case 2:
 			binary.BigEndian.PutUint16(result[offset:], uint16(operand))
+
+		default:
+			panic(fmt.Sprintf("Invalid operand width: %d", definition.OperandWidths[i]))
 		}
 
 		offset += definition.OperandWidths[i]
@@ -106,16 +100,20 @@ func Make(code OpCode, operands ...int) Instruction {
 	return result
 }
 
-func ReadOperands(definition *OpDefinition, raw_operands []byte) ([]int, int) {
+func ReadOperands(definition *OpDefinition, rawOperands []byte) ([]int, int) {
 	operands := make([]int, len(definition.OperandWidths))
 
 	offset := 0
 	for i, width := range definition.OperandWidths {
 		switch width {
 		case 1:
-			operands[i] = int(raw_operands[offset])
+			operands[i] = int(rawOperands[offset])
+
 		case 2:
-			operands[i] = int(binary.BigEndian.Uint16(raw_operands[offset:]))
+			operands[i] = int(binary.BigEndian.Uint16(rawOperands[offset:]))
+
+		default:
+			panic(fmt.Sprintf("Invalid operand width %d", width))
 		}
 
 		offset += width

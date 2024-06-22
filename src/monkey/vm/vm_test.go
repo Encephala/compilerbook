@@ -12,19 +12,18 @@ import (
 
 func TestIntegerArithmetic(t *testing.T) {
 	tests := []vmTestCase{
-		{"1", 1},
-		{"2", 2},
-		// TODO: Make this 3, but for now we expect 2 to be at top of stack
-		// when we implement add, this should become 3
-		{"1 + 2", 2},
+		{"1", 1, 1},
+		{"2", 2, 1},
+		{"1 + 2", 3, 1},
 	}
 
 	runVmTests(t, tests)
 }
 
 type vmTestCase struct {
-	input    string
-	expected interface{}
+	input          string
+	expected       interface{}
+	finalStackSize int
 }
 
 func runVmTests(t *testing.T, tests []vmTestCase) {
@@ -35,16 +34,17 @@ func runVmTests(t *testing.T, tests []vmTestCase) {
 
 		compiler := compiler.New()
 
-		err := compiler.Compile(program)
-		if err != nil {
-			t.Fatalf("Failed to compile: %s\nInput: %q", err, test.input)
-		}
+		compiler.Compile(program)
 
 		vm := New(compiler.Bytecode())
 
-		err = vm.Execute()
+		err := vm.Execute()
 		if err != nil {
 			t.Fatalf("Failed to execute: %s", err)
+		}
+
+		if vm.stackPointer != test.finalStackSize {
+			t.Fatalf("Final stack size %d not as expected (%d)", vm.stackPointer, test.finalStackSize)
 		}
 
 		stackItem := vm.StackTop()

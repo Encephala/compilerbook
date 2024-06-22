@@ -5,10 +5,10 @@ import "testing"
 func TestMake(t *testing.T) {
 	tests := []struct {
 		op       OpCode
-		operands []uint
+		operands []int
 		expected []byte
 	}{
-		{OpConstant, []uint{65534}, []byte{byte(OpConstant), 255, 254}},
+		{OpConstant, []int{65534}, []byte{byte(OpConstant), 255, 254}},
 	}
 
 	for _, test := range tests {
@@ -60,10 +60,10 @@ func TestInstructionsString(t *testing.T) {
 func TestReadOperands(t *testing.T) {
 	tests := []struct {
 		code      OpCode
-		operands  []uint
-		bytesRead uint
+		operands  []int
+		bytesRead int
 	}{
-		{OpConstant, []uint{65535}, 2},
+		{OpConstant, []int{65535}, 2},
 	}
 
 	for _, test := range tests {

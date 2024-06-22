@@ -33,7 +33,7 @@ func (instructions Instructions) String() string {
 	return out.String()
 }
 
-func fmtInstruction(definition *OpDefinition, operands []uint) string {
+func fmtInstruction(definition *OpDefinition, operands []int) string {
 	switch len(operands) {
 	case 1:
 		return fmt.Sprintf("%s %d", definition.Name, operands[0])
@@ -50,12 +50,12 @@ const (
 
 type OpDefinition struct {
 	Name          string
-	OperandWidths []uint
+	OperandWidths []int
 }
 
 var definitions = map[OpCode]*OpDefinition{
 	// Takes two bytes, so up to 65536 constants may be defined
-	OpConstant: {"OpConstant", []uint{2}},
+	OpConstant: {"OpConstant", []int{2}},
 }
 
 func Lookup(code OpCode) (*OpDefinition, error) {
@@ -69,7 +69,7 @@ func Lookup(code OpCode) (*OpDefinition, error) {
 	return result, e
 }
 
-func Make(code OpCode, operands ...uint) Instruction {
+func Make(code OpCode, operands ...int) Instruction {
 	definition, err := Lookup(code)
 
 	if err != nil {
@@ -81,7 +81,7 @@ func Make(code OpCode, operands ...uint) Instruction {
 		return Instruction{}
 	}
 
-	var instructionsLength uint = 1
+	instructionsLength := 1
 	for _, length := range definition.OperandWidths {
 		instructionsLength += length
 	}
@@ -90,7 +90,7 @@ func Make(code OpCode, operands ...uint) Instruction {
 
 	result[0] = byte(code)
 
-	var offset uint = 1
+	offset := 1
 	for i, operand := range operands {
 		switch definition.OperandWidths[i] {
 		case 1:
@@ -106,16 +106,16 @@ func Make(code OpCode, operands ...uint) Instruction {
 	return result
 }
 
-func ReadOperands(definition *OpDefinition, raw_operands []byte) ([]uint, uint) {
-	operands := make([]uint, len(definition.OperandWidths))
+func ReadOperands(definition *OpDefinition, raw_operands []byte) ([]int, int) {
+	operands := make([]int, len(definition.OperandWidths))
 
-	var offset uint = 0
+	offset := 0
 	for i, width := range definition.OperandWidths {
 		switch width {
 		case 1:
-			operands[i] = uint(raw_operands[offset])
+			operands[i] = int(raw_operands[offset])
 		case 2:
-			operands[i] = uint(binary.BigEndian.Uint16(raw_operands[offset:]))
+			operands[i] = int(binary.BigEndian.Uint16(raw_operands[offset:]))
 		}
 
 		offset += width

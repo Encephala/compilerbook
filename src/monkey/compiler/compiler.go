@@ -59,7 +59,7 @@ func (c *Compiler) Compile(node ast.Node) error {
 func (c *Compiler) addConstant(constant object.Object) {
 	index := len(c.constants)
 
-	bytecode := opcode.Make(opcode.OpConstant, uint(index))
+	bytecode := opcode.Make(opcode.OpConstant, index)
 
 	c.constants = append(c.constants, constant)
 

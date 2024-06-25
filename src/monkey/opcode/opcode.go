@@ -46,6 +46,9 @@ type OpCode byte
 const (
 	OpConstant OpCode = iota
 	OpAdd
+	OpSubtract
+	OpMultiply
+	OpDivide
 	OpPop
 )
 
@@ -58,6 +61,9 @@ var definitions = map[OpCode]*OpDefinition{
 	// Takes two bytes, so up to 65536 constants may be defined
 	OpConstant: {"OpConstant", []int{2}},
 	OpAdd:      {"OpAdd", []int{}},
+	OpSubtract: {"OpSubtract", []int{}},
+	OpMultiply: {"OpMuliply", []int{}},
+	OpDivide:   {"OpDivide", []int{}},
 	OpPop:      {"OpPop", []int{}},
 }
 

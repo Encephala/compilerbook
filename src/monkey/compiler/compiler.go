@@ -44,6 +44,12 @@ func (c *Compiler) Compile(node ast.Node) {
 		switch node.Operator {
 		case "+":
 			c.emit(opcode.OpAdd)
+		case "-":
+			c.emit(opcode.OpSubtract)
+		case "*":
+			c.emit(opcode.OpMultiply)
+		case "/":
+			c.emit(opcode.OpDivide)
 
 		default:
 			panic(fmt.Sprintf("Invalid infix operator: %q", node.Operator))

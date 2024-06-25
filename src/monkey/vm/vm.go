@@ -49,15 +49,9 @@ func (vm *VM) Execute() error {
 
 			instructionPointer += 2
 
-		case opcode.OpAdd:
-			left := vm.pop().(*object.Integer)
-			right := vm.pop().(*object.Integer)
+		case opcode.OpAdd, opcode.OpSubtract, opcode.OpMultiply, opcode.OpDivide:
+			err := vm.executeBinaryOperation(operation)
 
-			result := object.Integer{
-				Value: left.Value + right.Value,
-			}
-
-			err := vm.push(&result)
 			if err != nil {
 				return err
 			}
@@ -106,4 +100,46 @@ func (vm *VM) StackTop() object.Object {
 // For tests
 func (vm *VM) LastStackTop() object.Object {
 	return vm.stack[vm.stackPointer]
+}
+
+func (vm *VM) executeBinaryOperation(operation opcode.OpCode) error {
+	right := vm.pop().(*object.Integer)
+	left := vm.pop().(*object.Integer)
+
+	if left.Type() == object.INTEGER_OBJ && right.Type() == object.INTEGER_OBJ {
+		return vm.executeBinaryOperationInteger(operation, left, right)
+	}
+
+	panic(fmt.Sprintf("Invalid operand types %T, %T", left.Type(), right.Type()))
+}
+
+func (vm *VM) executeBinaryOperationInteger(operation opcode.OpCode, left, right *object.Integer) error {
+	var result object.Object
+
+	switch operation {
+	case opcode.OpAdd:
+		result = &object.Integer{
+			Value: left.Value + right.Value,
+		}
+
+	case opcode.OpSubtract:
+		result = &object.Integer{
+			Value: left.Value - right.Value,
+		}
+
+	case opcode.OpMultiply:
+		result = &object.Integer{
+			Value: left.Value * right.Value,
+		}
+
+	case opcode.OpDivide:
+		result = &object.Integer{
+			Value: left.Value / right.Value,
+		}
+
+	default:
+		panic(fmt.Sprintf("Invalid opcode %d", operation))
+	}
+
+	return vm.push(result)
 }

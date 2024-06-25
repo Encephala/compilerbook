@@ -44,11 +44,20 @@ func fmtInstruction(definition *OpDefinition, operands []int) string {
 type OpCode byte
 
 const (
-	OpConstant OpCode = iota
+	OpReadConstant OpCode = iota
+
 	OpAdd
 	OpSubtract
 	OpMultiply
 	OpDivide
+
+	OpEquals
+	OpNotEquals
+	OpGreaterThan
+
+	OpPushTrue
+	OpPushFalse
+
 	OpPop
 )
 
@@ -58,13 +67,21 @@ type OpDefinition struct {
 }
 
 var definitions = map[OpCode]*OpDefinition{
-	// Takes two bytes, so up to 65536 constants may be defined
-	OpConstant: {"OpConstant", []int{2}},
+	OpReadConstant: {"OpReadConstant", []int{2}}, // Takes two bytes, so up to 65536 constants may be defined
+
 	OpAdd:      {"OpAdd", []int{}},
 	OpSubtract: {"OpSubtract", []int{}},
-	OpMultiply: {"OpMuliply", []int{}},
+	OpMultiply: {"OpMultiply", []int{}},
 	OpDivide:   {"OpDivide", []int{}},
-	OpPop:      {"OpPop", []int{}},
+
+	OpEquals:      {"OpEquals", []int{}},
+	OpNotEquals:   {"OpNotEquals", []int{}},
+	OpGreaterThan: {"OpGreaterThan", []int{}},
+
+	OpPushTrue:  {"OpPushTrue", []int{}},
+	OpPushFalse: {"OpPushFalse", []int{}},
+
+	OpPop: {"OpPop", []int{}},
 }
 
 // Book passes a byte as code, I pass the OpCode

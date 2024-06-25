@@ -37,9 +37,16 @@ func (c *Compiler) Compile(node ast.Node) {
 		c.emit(opcode.OpPop)
 
 	case *ast.InfixExpression:
-		c.Compile(node.Left)
+		if node.Operator[0] == byte('<') {
+			// Switch order of operands, so we can reuse OpGreater
+			c.Compile(node.Right)
 
-		c.Compile(node.Right)
+			c.Compile(node.Left)
+		} else {
+			c.Compile(node.Left)
+
+			c.Compile(node.Right)
+		}
 
 		switch node.Operator {
 		case "+":
@@ -51,6 +58,15 @@ func (c *Compiler) Compile(node ast.Node) {
 		case "/":
 			c.emit(opcode.OpDivide)
 
+		case "==":
+			c.emit(opcode.OpEquals)
+		case "!=":
+			c.emit(opcode.OpNotEquals)
+		case ">":
+			c.emit(opcode.OpGreaterThan)
+		case "<":
+			c.emit(opcode.OpGreaterThan)
+
 		default:
 			panic(fmt.Sprintf("Invalid infix operator: %q", node.Operator))
 		}
@@ -58,7 +74,16 @@ func (c *Compiler) Compile(node ast.Node) {
 	case *ast.IntegerLiteral:
 		integer := &object.Integer{Value: node.Value}
 
-		c.addConstant(integer)
+		index := c.addConstant(integer)
+
+		c.emit(opcode.OpReadConstant, index)
+
+	case *ast.Boolean:
+		if node.Value {
+			c.emit(opcode.OpPushTrue)
+		} else {
+			c.emit(opcode.OpPushFalse)
+		}
 
 	default:
 		panic(fmt.Sprintf("Invalid node type: %T", node))
@@ -78,11 +103,7 @@ func (c *Compiler) addConstant(constant object.Object) int {
 
 	c.constants = append(c.constants, constant)
 
-	instructionIndex := len(c.instructions)
-
-	c.emit(opcode.OpConstant, constantIndex)
-
-	return instructionIndex
+	return constantIndex
 }
 
 func (c *Compiler) Bytecode() *Bytecode {

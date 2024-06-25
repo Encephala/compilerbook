@@ -10,6 +10,17 @@ import (
 
 const StackSize = 2048
 
+var True = &object.Boolean{Value: true}
+var False = &object.Boolean{Value: false}
+
+func toBoolObject(b bool) *object.Boolean {
+	if b {
+		return True
+	} else {
+		return False
+	}
+}
+
 type VM struct {
 	instructions opcode.Instructions
 	constants    []object.Object
@@ -36,7 +47,7 @@ func (vm *VM) Execute() error {
 
 		// Decode & Execute
 		switch operation {
-		case opcode.OpConstant:
+		case opcode.OpReadConstant:
 			// Index of an OpConstant is two bytes wide
 			// Don't look up width using opcode.Lookup, that is a lot of operations,
 			// Hardcode that we know how big it is
@@ -49,18 +60,36 @@ func (vm *VM) Execute() error {
 
 			instructionPointer += 2
 
+		case opcode.OpPushTrue:
+			err := vm.push(True)
+			if err != nil {
+				return err
+			}
+		case opcode.OpPushFalse:
+			err := vm.push(False)
+			if err != nil {
+				return err
+			}
+
 		case opcode.OpAdd, opcode.OpSubtract, opcode.OpMultiply, opcode.OpDivide:
-			err := vm.executeBinaryOperation(operation)
+			err := vm.executeBinaryArithmetic(operation)
 
 			if err != nil {
 				return err
+			}
+
+		case opcode.OpEquals, opcode.OpNotEquals, opcode.OpGreaterThan:
+			err := vm.executeComparison(operation)
+
+			if err != nil {
+				return nil
 			}
 
 		case opcode.OpPop:
 			vm.pop()
 
 		default:
-			panic(fmt.Sprintf("Invalid opcode %d", operation))
+			panic(fmt.Sprintf("Invalid opcode %q", opcode.Lookup(operation).Name))
 		}
 	}
 
@@ -102,18 +131,18 @@ func (vm *VM) LastStackTop() object.Object {
 	return vm.stack[vm.stackPointer]
 }
 
-func (vm *VM) executeBinaryOperation(operation opcode.OpCode) error {
-	right := vm.pop().(*object.Integer)
-	left := vm.pop().(*object.Integer)
+func (vm *VM) executeBinaryArithmetic(operation opcode.OpCode) error {
+	right := vm.pop()
+	left := vm.pop()
 
 	if left.Type() == object.INTEGER_OBJ && right.Type() == object.INTEGER_OBJ {
-		return vm.executeBinaryOperationInteger(operation, left, right)
+		return vm.executeBinaryArithmeticInteger(operation, left.(*object.Integer), right.(*object.Integer))
 	}
 
 	panic(fmt.Sprintf("Invalid operand types %T, %T", left.Type(), right.Type()))
 }
 
-func (vm *VM) executeBinaryOperationInteger(operation opcode.OpCode, left, right *object.Integer) error {
+func (vm *VM) executeBinaryArithmeticInteger(operation opcode.OpCode, left, right *object.Integer) error {
 	var result object.Object
 
 	switch operation {
@@ -137,8 +166,71 @@ func (vm *VM) executeBinaryOperationInteger(operation opcode.OpCode, left, right
 			Value: left.Value / right.Value,
 		}
 
+	case opcode.OpEquals:
+		result = toBoolObject(left.Value == right.Value)
+
+	case opcode.OpNotEquals:
+		result = toBoolObject(left.Value != right.Value)
+
+	case opcode.OpGreaterThan:
+		result = toBoolObject(left.Value > right.Value)
+
 	default:
-		panic(fmt.Sprintf("Invalid opcode %d", operation))
+		panic(fmt.Sprintf("Invalid opcode %q", opcode.Lookup(operation).Name))
+	}
+
+	return vm.push(result)
+}
+
+func (vm *VM) executeComparison(operation opcode.OpCode) error {
+	right := vm.pop()
+	left := vm.pop()
+
+	if left.Type() == object.INTEGER_OBJ && right.Type() == object.INTEGER_OBJ {
+		return vm.executeComparisonInteger(operation, left.(*object.Integer), right.(*object.Integer))
+	}
+
+	if left.Type() == object.BOOLEAN_OBJ && right.Type() == object.BOOLEAN_OBJ {
+		return vm.executeComparisonBoolean(operation, left, right)
+	}
+
+	panic(fmt.Sprintf("Invalid operand types %T, %T", left.Type(), right.Type()))
+}
+
+func (vm *VM) executeComparisonInteger(operation opcode.OpCode, left, right *object.Integer) error {
+	var result object.Object
+
+	// Pointer comparison, True and False are global (semantically constant) Boolean objects
+	switch operation {
+	case opcode.OpEquals:
+		result = toBoolObject(left.Value == right.Value)
+
+	case opcode.OpNotEquals:
+		result = toBoolObject(left.Value != right.Value)
+
+	case opcode.OpGreaterThan:
+		result = toBoolObject(left.Value > right.Value)
+
+	default:
+		panic(fmt.Sprintf("Invalid opcode %q", opcode.Lookup(operation).Name))
+	}
+
+	return vm.push(result)
+}
+
+func (vm *VM) executeComparisonBoolean(operation opcode.OpCode, left, right object.Object) error {
+	var result object.Object
+
+	// Pointer comparison, True and False are global (semantically constant) Boolean objects
+	switch operation {
+	case opcode.OpEquals:
+		result = toBoolObject(left == right)
+
+	case opcode.OpNotEquals:
+		result = toBoolObject(left != right)
+
+	default:
+		panic(fmt.Sprintf("Invalid opcode %q", opcode.Lookup(operation).Name))
 	}
 
 	return vm.push(result)

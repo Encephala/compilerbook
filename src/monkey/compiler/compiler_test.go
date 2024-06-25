@@ -10,21 +10,117 @@ import (
 	"testing"
 )
 
-func parse(input string) *ast.Program {
-	l := lexer.New(input)
-	p := parser.New(l)
-	return p.ParseProgram()
-}
-
 type compilerTestCase struct {
 	input                string
 	expectedConstants    []interface{}
 	expectedInstructions []opcode.Instruction
 }
 
-func runCompilerTests(t *testing.T, tests []compilerTestCase) {
-	t.Helper()
+func TestIntegerArithmetic(t *testing.T) {
+	tests := []compilerTestCase{
+		{
+			input:             "1 + 2",
+			expectedConstants: []interface{}{1, 2},
+			expectedInstructions: []opcode.Instruction{
+				opcode.Make(opcode.OpReadConstant, 0),
+				opcode.Make(opcode.OpReadConstant, 1),
+				opcode.Make(opcode.OpAdd),
+				opcode.Make(opcode.OpPop),
+			},
+		},
+		{
+			input:             "1; 2",
+			expectedConstants: []interface{}{1, 2},
+			expectedInstructions: []opcode.Instruction{
+				opcode.Make(opcode.OpReadConstant, 0),
+				opcode.Make(opcode.OpPop),
+				opcode.Make(opcode.OpReadConstant, 1),
+				opcode.Make(opcode.OpPop),
+			},
+		},
+		{
+			input:             "1 - 2;",
+			expectedConstants: []interface{}{1, 2},
+			expectedInstructions: []opcode.Instruction{
+				opcode.Make(opcode.OpReadConstant, 0),
+				opcode.Make(opcode.OpReadConstant, 1),
+				opcode.Make(opcode.OpSubtract),
+				opcode.Make(opcode.OpPop),
+			},
+		},
+		{
+			input:             "1 * 2;",
+			expectedConstants: []interface{}{1, 2},
+			expectedInstructions: []opcode.Instruction{
+				opcode.Make(opcode.OpReadConstant, 0),
+				opcode.Make(opcode.OpReadConstant, 1),
+				opcode.Make(opcode.OpMultiply),
+				opcode.Make(opcode.OpPop),
+			},
+		},
+		{
+			input:             "1 / 2;",
+			expectedConstants: []interface{}{1, 2},
+			expectedInstructions: []opcode.Instruction{
+				opcode.Make(opcode.OpReadConstant, 0),
+				opcode.Make(opcode.OpReadConstant, 1),
+				opcode.Make(opcode.OpDivide),
+				opcode.Make(opcode.OpPop),
+			},
+		},
+	}
 
+	runCompilerTests(t, tests)
+}
+
+func TestBooleanExpressions(t *testing.T) {
+	tests := []compilerTestCase{
+		{
+			input:             "true; false",
+			expectedConstants: []interface{}{},
+			expectedInstructions: []opcode.Instruction{
+				opcode.Make(opcode.OpPushTrue),
+				opcode.Make(opcode.OpPop),
+				opcode.Make(opcode.OpPushFalse),
+				opcode.Make(opcode.OpPop),
+			},
+		},
+		{
+			input:             "1 == 1",
+			expectedConstants: []interface{}{1, 1},
+			expectedInstructions: []opcode.Instruction{
+				opcode.Make(opcode.OpReadConstant, 0),
+				opcode.Make(opcode.OpReadConstant, 1),
+				opcode.Make(opcode.OpEquals),
+				opcode.Make(opcode.OpPop),
+			},
+		},
+		{
+			input:             "2 > 1",
+			expectedConstants: []interface{}{2, 1},
+			expectedInstructions: []opcode.Instruction{
+				opcode.Make(opcode.OpReadConstant, 0),
+				opcode.Make(opcode.OpReadConstant, 1),
+				opcode.Make(opcode.OpGreaterThan),
+				opcode.Make(opcode.OpPop),
+			},
+		},
+		{
+			input:             "2 < 1",
+			expectedConstants: []interface{}{1, 2},
+			expectedInstructions: []opcode.Instruction{
+				opcode.Make(opcode.OpReadConstant, 0),
+				opcode.Make(opcode.OpReadConstant, 1),
+				opcode.Make(opcode.OpGreaterThan),
+				opcode.Make(opcode.OpPop),
+			},
+		},
+	}
+
+	runCompilerTests(t, tests)
+}
+
+func runCompilerTests(t *testing.T, tests []compilerTestCase) {
 	for _, test := range tests {
 		program := parse(test.input)
 
@@ -35,14 +131,14 @@ func runCompilerTests(t *testing.T, tests []compilerTestCase) {
 
 		concatenatedInstructions := concatInstructions(test.expectedInstructions)
 
-		err := testInstructions(concatenatedInstructions, bytecode.Instructions)
-		if err != nil {
-			t.Fatalf("testInstructions failed: %s\n", err)
-		}
-
-		err = testConstants(test.expectedConstants, bytecode.Constants)
+		err := testConstants(test.expectedConstants, bytecode.Constants)
 		if err != nil {
 			t.Fatalf("testConstants failed: %s\n", err)
+		}
+
+		err = testInstructions(concatenatedInstructions, bytecode.Instructions)
+		if err != nil {
+			t.Fatalf("testInstructions failed: %s\n", err)
 		}
 	}
 }
@@ -55,82 +151,6 @@ func concatInstructions(instructions []opcode.Instruction) opcode.Instructions {
 	}
 
 	return result
-}
-
-func TestIntegerArithmetic(t *testing.T) {
-	tests := []compilerTestCase{
-		{
-			input:             "1 + 2",
-			expectedConstants: []interface{}{1, 2},
-			expectedInstructions: []opcode.Instruction{
-				opcode.Make(opcode.OpConstant, 0),
-				opcode.Make(opcode.OpConstant, 1),
-				opcode.Make(opcode.OpAdd),
-				opcode.Make(opcode.OpPop),
-			},
-		},
-		{
-			input:             "1; 2",
-			expectedConstants: []interface{}{1, 2},
-			expectedInstructions: []opcode.Instruction{
-				opcode.Make(opcode.OpConstant, 0),
-				opcode.Make(opcode.OpPop),
-				opcode.Make(opcode.OpConstant, 1),
-				opcode.Make(opcode.OpPop),
-			},
-		},
-		{
-			input:             "1 - 2;",
-			expectedConstants: []interface{}{1, 2},
-			expectedInstructions: []opcode.Instruction{
-				opcode.Make(opcode.OpConstant, 0),
-				opcode.Make(opcode.OpConstant, 1),
-				opcode.Make(opcode.OpSubtract),
-				opcode.Make(opcode.OpPop),
-			},
-		},
-		{
-			input:             "1 * 2;",
-			expectedConstants: []interface{}{1, 2},
-			expectedInstructions: []opcode.Instruction{
-				opcode.Make(opcode.OpConstant, 0),
-				opcode.Make(opcode.OpConstant, 1),
-				opcode.Make(opcode.OpMultiply),
-				opcode.Make(opcode.OpPop),
-			},
-		},
-		{
-			input:             "1 / 2;",
-			expectedConstants: []interface{}{1, 2},
-			expectedInstructions: []opcode.Instruction{
-				opcode.Make(opcode.OpConstant, 0),
-				opcode.Make(opcode.OpConstant, 1),
-				opcode.Make(opcode.OpDivide),
-				opcode.Make(opcode.OpPop),
-			},
-		},
-	}
-
-	runCompilerTests(t, tests)
-}
-
-func testInstructions(expected opcode.Instructions, actual opcode.Instructions) error {
-	if len(expected) != len(actual) {
-		return fmt.Errorf(
-			"Wrong instructions %q, expected %q", actual, expected,
-		)
-	}
-
-	for i, instruction := range expected {
-		if instruction != actual[i] {
-			return fmt.Errorf(
-				"wrong instruction %d at %d, expected %d",
-				actual[i], i, instruction,
-			)
-		}
-	}
-
-	return nil
 }
 
 func testConstants(expected []interface{}, actual []object.Object) error {
@@ -157,6 +177,25 @@ func testConstants(expected []interface{}, actual []object.Object) error {
 	return nil
 }
 
+func testInstructions(expected opcode.Instructions, actual opcode.Instructions) error {
+	if len(expected) != len(actual) {
+		return fmt.Errorf(
+			"Wrong instructions %q, expected %q", actual, expected,
+		)
+	}
+
+	for i, instruction := range expected {
+		if instruction != actual[i] {
+			return fmt.Errorf(
+				"wrong instruction at %d:\nactual: %q\nexpected: %q",
+				i, actual, expected,
+			)
+		}
+	}
+
+	return nil
+}
+
 func testIntegerObject(expected int64, actual object.Object) error {
 	converted, ok := actual.(*object.Integer)
 
@@ -172,4 +211,10 @@ func testIntegerObject(expected int64, actual object.Object) error {
 	}
 
 	return nil
+}
+
+func parse(input string) *ast.Program {
+	l := lexer.New(input)
+	p := parser.New(l)
+	return p.ParseProgram()
 }

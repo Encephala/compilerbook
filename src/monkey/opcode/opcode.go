@@ -46,6 +46,9 @@ type OpCode byte
 const (
 	OpReadConstant OpCode = iota
 
+	OpNegate
+	OpLogicalNot
+
 	OpAdd
 	OpSubtract
 	OpMultiply
@@ -68,6 +71,9 @@ type OpDefinition struct {
 
 var definitions = map[OpCode]*OpDefinition{
 	OpReadConstant: {"OpReadConstant", []int{2}}, // Takes two bytes, so up to 65536 constants may be defined
+
+	OpNegate:     {"OpNegate", []int{}},
+	OpLogicalNot: {"OpLogicalNot", []int{}},
 
 	OpAdd:      {"OpAdd", []int{}},
 	OpSubtract: {"OpSubtract", []int{}},
@@ -94,7 +100,7 @@ func Lookup(code OpCode) *OpDefinition {
 	return result
 }
 
-func Make(code OpCode, operands ...int) Instruction {
+func MakeInstruction(code OpCode, operands ...int) Instruction {
 	definition := Lookup(code)
 
 	instructionsLength := 1

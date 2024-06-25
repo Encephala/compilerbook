@@ -71,6 +71,18 @@ func (vm *VM) Execute() error {
 				return err
 			}
 
+		case opcode.OpNegate:
+			err := vm.executeNegate()
+			if err != nil {
+				return nil
+			}
+
+		case opcode.OpLogicalNot:
+			err := vm.executeLogicalNot()
+			if err != nil {
+				return nil
+			}
+
 		case opcode.OpAdd, opcode.OpSubtract, opcode.OpMultiply, opcode.OpDivide:
 			err := vm.executeBinaryArithmetic(operation)
 
@@ -129,6 +141,42 @@ func (vm *VM) StackTop() object.Object {
 // For tests
 func (vm *VM) LastStackTop() object.Object {
 	return vm.stack[vm.stackPointer]
+}
+
+func (vm *VM) executeNegate() error {
+	operand := vm.pop()
+
+	value, ok := operand.(*object.Integer)
+
+	if !ok {
+		panic(fmt.Sprintf("Object %v not an integer", operand))
+	}
+
+	value.Value *= -1
+
+	return vm.push(value)
+}
+
+func (vm *VM) executeLogicalNot() error {
+	operand := vm.pop()
+
+	var result object.Object
+
+	if operand == True {
+		result = False
+	} else if operand == False {
+		result = True
+	} else if integer, ok := operand.(*object.Integer); ok {
+		// 0 is falsy, other integers are truthy
+		// Deviating from the book here, which treats everything that isn't a boolean falsy
+		truthy := integer.Value != 0
+
+		result = toBoolObject(!truthy)
+	} else {
+		panic(fmt.Sprintf("Object %v not a boolean", operand))
+	}
+
+	return vm.push(result)
 }
 
 func (vm *VM) executeBinaryArithmetic(operation opcode.OpCode) error {
@@ -224,6 +272,7 @@ func (vm *VM) executeComparisonBoolean(operation opcode.OpCode, left, right obje
 	// Pointer comparison, True and False are global (semantically constant) Boolean objects
 	switch operation {
 	case opcode.OpEquals:
+		fmt.Printf("%v==%v:\n%v", left, right, toBoolObject(left == right))
 		result = toBoolObject(left == right)
 
 	case opcode.OpNotEquals:

@@ -2,7 +2,7 @@ package opcode
 
 import "testing"
 
-func TestMake(t *testing.T) {
+func TestMakeInstruction(t *testing.T) {
 	tests := []struct {
 		op       OpCode
 		operands []int
@@ -13,7 +13,7 @@ func TestMake(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		instruction := Make(test.op, test.operands...)
+		instruction := MakeInstruction(test.op, test.operands...)
 
 		if len(instruction) != len(test.expected) {
 			t.Errorf(
@@ -35,9 +35,9 @@ func TestMake(t *testing.T) {
 
 func TestInstructionsString(t *testing.T) {
 	instructions := []Instruction{
-		Make(OpAdd),
-		Make(OpReadConstant, 2),
-		Make(OpReadConstant, 65535),
+		MakeInstruction(OpAdd),
+		MakeInstruction(OpReadConstant, 2),
+		MakeInstruction(OpReadConstant, 65535),
 	}
 
 	expected := `0000 OpAdd
@@ -68,7 +68,7 @@ func TestReadOperands(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		instruction := Make(test.code, test.operands...)
+		instruction := MakeInstruction(test.code, test.operands...)
 
 		definition := Lookup(test.code)
 

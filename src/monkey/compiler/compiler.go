@@ -71,6 +71,19 @@ func (c *Compiler) Compile(node ast.Node) {
 			panic(fmt.Sprintf("Invalid infix operator: %q", node.Operator))
 		}
 
+	case *ast.PrefixExpression:
+		c.Compile(node.Right)
+		switch node.Operator {
+		case "-":
+			c.emit(opcode.OpNegate)
+
+		case "!":
+			c.emit(opcode.OpLogicalNot)
+
+		default:
+			panic(fmt.Sprintf("Invalid prefix operator: %q", node.Operator))
+		}
+
 	case *ast.IntegerLiteral:
 		integer := &object.Integer{Value: node.Value}
 
@@ -91,7 +104,7 @@ func (c *Compiler) Compile(node ast.Node) {
 }
 
 func (c *Compiler) emit(op opcode.OpCode, operands ...int) {
-	bytecode := opcode.Make(op, operands...)
+	bytecode := opcode.MakeInstruction(op, operands...)
 
 	for _, b := range bytecode {
 		c.instructions = append(c.instructions, b)

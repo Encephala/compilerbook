@@ -86,6 +86,10 @@ func (c *Compiler) Compile(node ast.Node) {
 			return
 		}
 
+		if len(node.Statements) == 0 {
+			c.emit(opcode.OpPushNull)
+		}
+
 		for _, statement := range node.Statements {
 			c.Compile(statement)
 		}

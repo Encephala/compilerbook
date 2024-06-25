@@ -66,6 +66,26 @@ func TestBooleanExpressions(t *testing.T) {
 	runVmTests(t, tests)
 }
 
+func TestConditionals(t *testing.T) {
+	tests := []vmTestCase{
+		{"if (true) {}", Null},
+		{"if (true) { 69 }", 69},
+		{"if (false) { 69 } else { 420 }", 420},
+		{"if (false) { 69 }", Null},
+
+		{"if (6 > 9) { 69 } else { 420 }", 420},
+		{"if (10 > 9) { 69 } else { 420 }", 69},
+
+		{"if (5) { 69 } else { 420 }", 69},
+		{"if (0) { 69 } else { 420 }", 420},
+
+		{"if (if (true) {}) { 69 } else { 420 }", 420},
+		{"if (!if (true) {}) { 69 } else { 420 }", 69},
+	}
+
+	runVmTests(t, tests)
+}
+
 func runVmTests(t *testing.T, tests []vmTestCase) {
 	for _, test := range tests {
 		program := parse(test.input)
@@ -99,6 +119,11 @@ func testExpectedObject(t *testing.T, expected interface{}, actual object.Object
 		err := testBoolObject(bool(expected), actual)
 		if err != nil {
 			t.Fatalf("Test failed: %s", err)
+		}
+
+	case *object.Null:
+		if actual != Null {
+			t.Fatalf("Object %v is not Null", actual)
 		}
 
 	default:

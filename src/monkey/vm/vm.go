@@ -12,6 +12,7 @@ const StackSize = 2048
 
 var True = &object.Boolean{Value: true}
 var False = &object.Boolean{Value: false}
+var Null = &object.Null{}
 
 func toBoolObject(b bool) *object.Boolean {
 	if b {
@@ -65,10 +66,17 @@ func (vm *VM) Execute() error {
 			if err != nil {
 				return err
 			}
+
 		case opcode.OpPushFalse:
 			err := vm.push(False)
 			if err != nil {
 				return err
+			}
+
+		case opcode.OpPushNull:
+			err := vm.push(Null)
+			if err != nil {
+				return nil
 			}
 
 		case opcode.OpNegate:
@@ -95,6 +103,24 @@ func (vm *VM) Execute() error {
 
 			if err != nil {
 				return nil
+			}
+
+		case opcode.OpJump:
+			newPosition := int(binary.BigEndian.Uint16(vm.instructions[instructionPointer+1:]))
+
+			// Have to decrement by one because the instruction loop post-increments by one
+			instructionPointer = newPosition - 1
+
+		case opcode.OpJumpNotTruthy:
+			condition := vm.pop()
+
+			if !isTruthy(condition) {
+				newPosition := int(binary.BigEndian.Uint16(vm.instructions[instructionPointer+1:]))
+
+				instructionPointer = newPosition - 1
+			} else {
+				// Skip jump target
+				instructionPointer += 2
 			}
 
 		case opcode.OpPop:
@@ -160,21 +186,7 @@ func (vm *VM) executeNegate() error {
 func (vm *VM) executeLogicalNot() error {
 	operand := vm.pop()
 
-	var result object.Object
-
-	if operand == True {
-		result = False
-	} else if operand == False {
-		result = True
-	} else if integer, ok := operand.(*object.Integer); ok {
-		// 0 is falsy, other integers are truthy
-		// Deviating from the book here, which treats everything that isn't a boolean truthy
-		truthy := integer.Value != 0
-
-		result = toBoolObject(!truthy)
-	} else {
-		panic(fmt.Sprintf("Object %v not a boolean", operand))
-	}
+	result := toBoolObject(!isTruthy(operand))
 
 	return vm.push(result)
 }
@@ -281,4 +293,27 @@ func (vm *VM) executeComparisonBoolean(operation opcode.OpCode, left, right obje
 	}
 
 	return vm.push(result)
+}
+
+func isTruthy(value object.Object) bool {
+	if value == True {
+		return true
+	}
+
+	if value == False {
+		return false
+	}
+
+	if value == Null {
+		return false
+	}
+
+	integer, ok := value.(*object.Integer)
+	if ok {
+		// 0 is falsy, other integers are truthy
+		// Deviating from the book here, which treats everything that isn't a boolean truthy
+		return integer.Value != 0
+	}
+
+	panic(fmt.Sprintf("Object %v not booleanish", value))
 }

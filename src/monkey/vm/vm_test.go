@@ -12,18 +12,17 @@ import (
 
 func TestIntegerArithmetic(t *testing.T) {
 	tests := []vmTestCase{
-		{"1", 1, 1},
-		{"2", 2, 1},
-		{"1 + 2", 3, 1},
+		{"1", 1},
+		{"2", 2},
+		{"1 + 2", 3},
 	}
 
 	runVmTests(t, tests)
 }
 
 type vmTestCase struct {
-	input          string
-	expected       interface{}
-	finalStackSize int
+	input    string
+	expected interface{}
 }
 
 func runVmTests(t *testing.T, tests []vmTestCase) {
@@ -43,13 +42,9 @@ func runVmTests(t *testing.T, tests []vmTestCase) {
 			t.Fatalf("Failed to execute: %s", err)
 		}
 
-		if vm.stackPointer != test.finalStackSize {
-			t.Fatalf("Final stack size %d not as expected (%d)", vm.stackPointer, test.finalStackSize)
-		}
+		result := vm.LastStackTop()
 
-		stackItem := vm.StackTop()
-
-		testExpectedObject(t, test.expected, stackItem)
+		testExpectedObject(t, test.expected, result)
 	}
 }
 
@@ -63,12 +58,6 @@ func testExpectedObject(t *testing.T, expected interface{}, actual object.Object
 			t.Fatalf("Test failed: %s", err)
 		}
 	}
-}
-
-func parse(input string) *ast.Program {
-	l := lexer.New(input)
-	p := parser.New(l)
-	return p.ParseProgram()
 }
 
 func testIntegerObject(expected int64, actual object.Object) error {
@@ -86,4 +75,10 @@ func testIntegerObject(expected int64, actual object.Object) error {
 	}
 
 	return nil
+}
+
+func parse(input string) *ast.Program {
+	l := lexer.New(input)
+	p := parser.New(l)
+	return p.ParseProgram()
 }

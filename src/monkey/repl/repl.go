@@ -23,6 +23,11 @@ func Start(in io.Reader, out io.Writer) {
 		}
 
 		line := scanner.Text()
+
+		if line == "" {
+			continue
+		}
+
 		l := lexer.New(line)
 		p := parser.New(l)
 
@@ -41,8 +46,8 @@ func Start(in io.Reader, out io.Writer) {
 			fmt.Fprintf(out, "Execution failed:\n%s\n", err)
 		}
 
-		stackTop := machine.StackTop()
-		io.WriteString(out, stackTop.Inspect())
+		result := machine.LastStackTop()
+		io.WriteString(out, result.Inspect())
 		io.WriteString(out, "\n")
 	}
 }

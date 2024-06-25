@@ -34,6 +34,8 @@ func (c *Compiler) Compile(node ast.Node) {
 	case *ast.ExpressionStatement:
 		c.Compile(node.Expression)
 
+		c.emit(opcode.OpPop)
+
 	case *ast.InfixExpression:
 		c.Compile(node.Left)
 

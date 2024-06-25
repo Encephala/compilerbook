@@ -62,6 +62,9 @@ func (vm *VM) Execute() error {
 				return err
 			}
 
+		case opcode.OpPop:
+			vm.pop()
+
 		default:
 			panic(fmt.Sprintf("Invalid opcode %d", operation))
 		}
@@ -93,9 +96,14 @@ func (vm *VM) pop() object.Object {
 func (vm *VM) StackTop() object.Object {
 	if vm.stackPointer == 0 {
 		// Since object.Object is an interface,
-		// we can return a nil value without having to return a *object.Object
+		// we can return a nil value without changing the signature to *object.Object
 		return nil
 	}
 
 	return vm.stack[vm.stackPointer-1]
+}
+
+// For tests
+func (vm *VM) LastStackTop() object.Object {
+	return vm.stack[vm.stackPointer]
 }

@@ -46,6 +46,7 @@ type OpCode byte
 const (
 	OpConstant OpCode = iota
 	OpAdd
+	OpPop
 )
 
 type OpDefinition struct {
@@ -57,6 +58,7 @@ var definitions = map[OpCode]*OpDefinition{
 	// Takes two bytes, so up to 65536 constants may be defined
 	OpConstant: {"OpConstant", []int{2}},
 	OpAdd:      {"OpAdd", []int{}},
+	OpPop:      {"OpPop", []int{}},
 }
 
 // Book passes a byte as code, I pass the OpCode

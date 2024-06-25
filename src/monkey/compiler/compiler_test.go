@@ -66,6 +66,17 @@ func TestIntegerArithmetic(t *testing.T) {
 				opcode.Make(opcode.OpConstant, 0),
 				opcode.Make(opcode.OpConstant, 1),
 				opcode.Make(opcode.OpAdd),
+				opcode.Make(opcode.OpPop),
+			},
+		},
+		{
+			input:             "1; 2",
+			expectedConstants: []interface{}{1, 2},
+			expectedInstructions: []opcode.Instruction{
+				opcode.Make(opcode.OpConstant, 0),
+				opcode.Make(opcode.OpPop),
+				opcode.Make(opcode.OpConstant, 1),
+				opcode.Make(opcode.OpPop),
 			},
 		},
 	}

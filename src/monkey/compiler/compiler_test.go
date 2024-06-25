@@ -143,6 +143,39 @@ func TestBooleanExpressions(t *testing.T) {
 	runCompilerTests(t, tests)
 }
 
+func TestConditionals(t *testing.T) {
+	tests := []compilerTestCase{
+		{
+			input:             "if (true) { 69 }",
+			expectedConstants: []interface{}{69},
+			expectedInstructions: []opcode.Instruction{
+				opcode.MakeInstruction(opcode.OpPushTrue),
+				opcode.MakeInstruction(opcode.OpJumpNotTruthy, 10),
+				opcode.MakeInstruction(opcode.OpReadConstant, 0),
+				opcode.MakeInstruction(opcode.OpJump, 11),
+				opcode.MakeInstruction(opcode.OpPushNull),
+				// Alternative implicitly returns null, so still should pop the ExpressionStatement result
+				// But no alternative means no jump needed at end of consequence
+				opcode.MakeInstruction(opcode.OpPop),
+			},
+		},
+		{
+			input:             "if (false) { 69 } else { 420 }",
+			expectedConstants: []interface{}{69, 420},
+			expectedInstructions: []opcode.Instruction{
+				opcode.MakeInstruction(opcode.OpPushFalse),
+				opcode.MakeInstruction(opcode.OpJumpNotTruthy, 10),
+				opcode.MakeInstruction(opcode.OpReadConstant, 0),
+				opcode.MakeInstruction(opcode.OpJump, 13),
+				opcode.MakeInstruction(opcode.OpReadConstant, 1),
+				opcode.MakeInstruction(opcode.OpPop),
+			},
+		},
+	}
+
+	runCompilerTests(t, tests)
+}
+
 func runCompilerTests(t *testing.T, tests []compilerTestCase) {
 	for _, test := range tests {
 		program := parse(test.input)

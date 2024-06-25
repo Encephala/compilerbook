@@ -60,6 +60,10 @@ const (
 
 	OpPushTrue
 	OpPushFalse
+	OpPushNull
+
+	OpJump
+	OpJumpNotTruthy
 
 	OpPop
 )
@@ -86,6 +90,10 @@ var definitions = map[OpCode]*OpDefinition{
 
 	OpPushTrue:  {"OpPushTrue", []int{}},
 	OpPushFalse: {"OpPushFalse", []int{}},
+	OpPushNull:  {"OpPushNull", []int{}},
+
+	OpJump:          {"OpJump", []int{2}}, // Program can be up to 65536 instructions long
+	OpJumpNotTruthy: {"OpJumpNotTruthy", []int{2}},
 
 	OpPop: {"OpPop", []int{}},
 }

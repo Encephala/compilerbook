@@ -10,6 +10,14 @@ import (
 type Compiler struct {
 	instructions opcode.Instructions
 	constants    []object.Object
+
+	lastInstruction     *EmittedInstruction
+	previousInstruction *EmittedInstruction // So we can set lastInstruction after popping off an instruction
+}
+
+type EmittedInstruction struct {
+	code  opcode.OpCode
+	index int
 }
 
 type Bytecode struct {
@@ -21,6 +29,16 @@ func New() *Compiler {
 	return &Compiler{
 		instructions: []byte{},
 		constants:    []object.Object{},
+
+		lastInstruction:     nil,
+		previousInstruction: nil,
+	}
+}
+
+func (c *Compiler) Bytecode() *Bytecode {
+	return &Bytecode{
+		Instructions: c.instructions,
+		Constants:    c.constants,
 	}
 }
 
@@ -35,6 +53,42 @@ func (c *Compiler) Compile(node ast.Node) {
 		c.Compile(node.Expression)
 
 		c.emit(opcode.OpPop)
+
+	case *ast.IfExpression:
+		c.Compile(node.Condition)
+		c.emit(opcode.OpJumpNotTruthy, -1) // Invalid jump location as temporary value
+
+		indexJumpNotTruthy := c.lastInstruction.index
+
+		c.Compile(node.Consequence)
+		// What's null safety? I hardly know her
+		if c.lastInstruction.code == opcode.OpPop {
+			c.removeLastPop()
+		}
+
+		c.emit(opcode.OpJump, -1) // Invalid jump location as temporary value
+
+		c.replaceInstruction(indexJumpNotTruthy, opcode.MakeInstruction(opcode.OpJumpNotTruthy, len(c.instructions)))
+
+		indexJump := c.lastInstruction.index
+
+		c.Compile(node.Alternative)
+		if c.lastInstruction.code == opcode.OpPop {
+			c.removeLastPop()
+		}
+
+		c.replaceInstruction(indexJump, opcode.MakeInstruction(opcode.OpJump, len(c.instructions)))
+
+	case *ast.BlockStatement:
+		if node == nil {
+			c.emit(opcode.OpPushNull)
+
+			return
+		}
+
+		for _, statement := range node.Statements {
+			c.Compile(statement)
+		}
 
 	case *ast.InfixExpression:
 		if node.Operator[0] == byte('<') {
@@ -106,8 +160,12 @@ func (c *Compiler) Compile(node ast.Node) {
 func (c *Compiler) emit(op opcode.OpCode, operands ...int) {
 	bytecode := opcode.MakeInstruction(op, operands...)
 
-	for _, b := range bytecode {
-		c.instructions = append(c.instructions, b)
+	starting_position := len(c.instructions)
+	c.instructions = append(c.instructions, bytecode...)
+
+	c.lastInstruction = &EmittedInstruction{
+		code:  op,
+		index: starting_position,
 	}
 }
 
@@ -119,9 +177,15 @@ func (c *Compiler) addConstant(constant object.Object) int {
 	return constantIndex
 }
 
-func (c *Compiler) Bytecode() *Bytecode {
-	return &Bytecode{
-		Instructions: c.instructions,
-		Constants:    c.constants,
+func (c *Compiler) removeLastPop() {
+	c.instructions = c.instructions[:len(c.instructions)-1]
+
+	c.lastInstruction = c.previousInstruction
+	c.previousInstruction = nil
+}
+
+func (c *Compiler) replaceInstruction(position int, newInstruction []byte) {
+	for i := 0; i < len(newInstruction); i++ {
+		c.instructions[position+i] = newInstruction[i]
 	}
 }

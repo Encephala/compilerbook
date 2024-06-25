@@ -168,7 +168,7 @@ func (vm *VM) executeLogicalNot() error {
 		result = True
 	} else if integer, ok := operand.(*object.Integer); ok {
 		// 0 is falsy, other integers are truthy
-		// Deviating from the book here, which treats everything that isn't a boolean falsy
+		// Deviating from the book here, which treats everything that isn't a boolean truthy
 		truthy := integer.Value != 0
 
 		result = toBoolObject(!truthy)
@@ -248,7 +248,6 @@ func (vm *VM) executeComparison(operation opcode.OpCode) error {
 func (vm *VM) executeComparisonInteger(operation opcode.OpCode, left, right *object.Integer) error {
 	var result object.Object
 
-	// Pointer comparison, True and False are global (semantically constant) Boolean objects
 	switch operation {
 	case opcode.OpEquals:
 		result = toBoolObject(left.Value == right.Value)
@@ -272,7 +271,6 @@ func (vm *VM) executeComparisonBoolean(operation opcode.OpCode, left, right obje
 	// Pointer comparison, True and False are global (semantically constant) Boolean objects
 	switch operation {
 	case opcode.OpEquals:
-		fmt.Printf("%v==%v:\n%v", left, right, toBoolObject(left == right))
 		result = toBoolObject(left == right)
 
 	case opcode.OpNotEquals:

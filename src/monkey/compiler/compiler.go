@@ -11,8 +11,9 @@ type Compiler struct {
 	instructions opcode.Instructions
 	constants    []object.Object
 
-	symbols map[string]int
+	symbols *SymbolTable
 
+	// References so we can set nil rather than meaningless default values
 	lastInstruction     *EmittedInstruction
 	previousInstruction *EmittedInstruction // So we can set lastInstruction after popping off an instruction
 }
@@ -32,7 +33,19 @@ func New() *Compiler {
 		instructions: []byte{},
 		constants:    []object.Object{},
 
-		symbols: make(map[string]int),
+		symbols: NewSymbolTable(),
+
+		lastInstruction:     nil,
+		previousInstruction: nil,
+	}
+}
+
+func NewWithState(constants []object.Object, symbols *SymbolTable) *Compiler {
+	return &Compiler{
+		instructions: []byte{},
+		constants:    constants,
+
+		symbols: symbols,
 
 		lastInstruction:     nil,
 		previousInstruction: nil,
@@ -46,25 +59,37 @@ func (c *Compiler) Bytecode() *Bytecode {
 	}
 }
 
-func (c *Compiler) Compile(node ast.Node) {
+func (c *Compiler) Compile(node ast.Node) error {
 	switch node := node.(type) {
 	case *ast.Program:
 		for _, statement := range node.Statements {
-			c.Compile(statement)
+			err := c.Compile(statement)
+			if err != nil {
+				return err
+			}
 		}
 
 	case *ast.ExpressionStatement:
-		c.Compile(node.Expression)
+		err := c.Compile(node.Expression)
+		if err != nil {
+			return err
+		}
 
 		c.emit(opcode.OpPop)
 
 	case *ast.IfExpression:
-		c.Compile(node.Condition)
+		err := c.Compile(node.Condition)
+		if err != nil {
+			return err
+		}
 		c.emit(opcode.OpJumpNotTruthy, -1) // Invalid jump location as temporary value
 
 		indexJumpNotTruthy := c.lastInstruction.index
 
-		c.Compile(node.Consequence)
+		err = c.Compile(node.Consequence)
+		if err != nil {
+			return err
+		}
 		// What's null safety? I hardly know her
 		if c.lastInstruction.code == opcode.OpPop {
 			c.removeLastPop()
@@ -76,46 +101,73 @@ func (c *Compiler) Compile(node ast.Node) {
 
 		indexJump := c.lastInstruction.index
 
-		c.Compile(node.Alternative)
-		if c.lastInstruction.code == opcode.OpPop {
-			c.removeLastPop()
+		if node.Alternative == nil {
+			c.emit(opcode.OpPushNull)
+		} else {
+			err = c.Compile(node.Alternative)
+			if err != nil {
+				return nil
+			}
+			if c.lastInstruction.code == opcode.OpPop {
+				c.removeLastPop()
+			}
 		}
 
 		c.replaceInstruction(indexJump, opcode.MakeInstruction(opcode.OpJump, len(c.instructions)))
 
 	case *ast.BlockStatement:
-		if node == nil {
-			c.emit(opcode.OpPushNull)
-
-			return
-		}
-
 		if len(node.Statements) == 0 {
 			c.emit(opcode.OpPushNull)
 		}
 
+		var err error
 		for _, statement := range node.Statements {
-			c.Compile(statement)
+			err = c.Compile(statement)
+			if err != nil {
+				return nil
+			}
 		}
 
 	case *ast.LetStatement:
-		c.Compile(node.Value)
+		err := c.Compile(node.Value)
+		if err != nil {
+			return nil
+		}
 
-		c.addGlobal(node.Name.Value)
+		symbol := c.symbols.Define(node.Name.Value)
+		c.emit(opcode.OpSetGlobal, symbol.Index)
 
 	case *ast.Identifier:
-		c.emit(opcode.OpReadGlobal, c.symbols[node.Value])
+		symbol, ok := c.symbols.Resolve(node.Value)
+
+		if !ok {
+			return fmt.Errorf("Symbol %q not found", node.Value)
+		}
+
+		c.emit(opcode.OpGetGlobal, symbol.Index)
 
 	case *ast.InfixExpression:
 		if node.Operator[0] == byte('<') {
 			// Switch order of operands, so we can reuse OpGreater
-			c.Compile(node.Right)
+			err := c.Compile(node.Right)
+			if err != nil {
+				return nil
+			}
 
-			c.Compile(node.Left)
+			err = c.Compile(node.Left)
+			if err != nil {
+				return nil
+			}
 		} else {
-			c.Compile(node.Left)
+			err := c.Compile(node.Left)
+			if err != nil {
+				return nil
+			}
 
-			c.Compile(node.Right)
+			err = c.Compile(node.Right)
+			if err != nil {
+				return nil
+			}
 		}
 
 		switch node.Operator {
@@ -142,7 +194,11 @@ func (c *Compiler) Compile(node ast.Node) {
 		}
 
 	case *ast.PrefixExpression:
-		c.Compile(node.Right)
+		err := c.Compile(node.Right)
+		if err != nil {
+			return nil
+		}
+
 		switch node.Operator {
 		case "-":
 			c.emit(opcode.OpNegate)
@@ -159,7 +215,7 @@ func (c *Compiler) Compile(node ast.Node) {
 
 		index := c.addConstant(integer)
 
-		c.emit(opcode.OpReadConstant, index)
+		c.emit(opcode.OpGetConstant, index)
 
 	case *ast.Boolean:
 		if node.Value {
@@ -171,6 +227,8 @@ func (c *Compiler) Compile(node ast.Node) {
 	default:
 		panic(fmt.Sprintf("Invalid node type: %T", node))
 	}
+
+	return nil
 }
 
 func (c *Compiler) emit(op opcode.OpCode, operands ...int) {
@@ -204,10 +262,4 @@ func (c *Compiler) replaceInstruction(position int, newInstruction []byte) {
 	for i := 0; i < len(newInstruction); i++ {
 		c.instructions[position+i] = newInstruction[i]
 	}
-}
-
-func (c *Compiler) addGlobal(name string) {
-	c.emit(opcode.OpWriteGlobal, len(c.symbols))
-
-	c.symbols[name] = len(c.symbols)
 }

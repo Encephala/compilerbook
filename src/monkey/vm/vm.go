@@ -9,6 +9,7 @@ import (
 )
 
 const StackSize = 2048
+const GlobalsSize = 65536 // Matching sixteen-bit operand of OpSetGlobal/OpGetGlobal
 
 var True = &object.Boolean{Value: true}
 var False = &object.Boolean{Value: false}
@@ -25,17 +26,37 @@ func toBoolObject(b bool) *object.Boolean {
 type VM struct {
 	instructions opcode.Instructions
 	constants    []object.Object
-	stack        []object.Object
-	// Next *free* slot in the stack, i.e. current length
-	stackPointer int
+
+	stack        [StackSize]object.Object
+	stackPointer int // Next *free* slot in the stack, i.e. current length
+
+	globals    *[GlobalsSize]object.Object
+	numGlobals int
 }
 
 func New(bytecode *compiler.Bytecode) VM {
 	return VM{
 		instructions: bytecode.Instructions,
 		constants:    bytecode.Constants,
-		stack:        make([]object.Object, StackSize),
+
+		stack:        [StackSize]object.Object{nil},
 		stackPointer: 0,
+
+		globals:    &[GlobalsSize]object.Object{nil},
+		numGlobals: 0,
+	}
+}
+
+func NewWithState(bytecode *compiler.Bytecode, state *[GlobalsSize]object.Object) VM {
+	return VM{
+		instructions: bytecode.Instructions,
+		constants:    bytecode.Constants,
+
+		stack:        [StackSize]object.Object{},
+		stackPointer: 0,
+
+		globals:    state,
+		numGlobals: 0,
 	}
 }
 
@@ -48,7 +69,7 @@ func (vm *VM) Execute() error {
 
 		// Decode & Execute
 		switch operation {
-		case opcode.OpReadConstant:
+		case opcode.OpGetConstant:
 			// Index of an OpConstant is two bytes wide
 			// Don't look up width using opcode.Lookup, that is a lot of operations,
 			// Hardcode that we know how big it is
@@ -123,6 +144,23 @@ func (vm *VM) Execute() error {
 				instructionPointer += 2
 			}
 
+		case opcode.OpSetGlobal:
+			index := int(binary.BigEndian.Uint16(vm.instructions[instructionPointer+1:]))
+
+			vm.globals[index] = vm.pop()
+
+			instructionPointer += 2
+
+		case opcode.OpGetGlobal:
+			index := int(binary.BigEndian.Uint16(vm.instructions[instructionPointer+1:]))
+
+			err := vm.push(vm.globals[index])
+			if err != nil {
+				return err
+			}
+
+			instructionPointer += 2
+
 		case opcode.OpPop:
 			vm.pop()
 
@@ -147,6 +185,7 @@ func (vm *VM) push(object object.Object) error {
 }
 
 func (vm *VM) pop() object.Object {
+	// This could underflow I guess
 	result := vm.stack[vm.stackPointer-1]
 
 	vm.stackPointer--

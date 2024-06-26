@@ -44,7 +44,7 @@ func fmtInstruction(definition *OpDefinition, operands []int) string {
 type OpCode byte
 
 const (
-	OpReadConstant OpCode = iota
+	OpGetConstant OpCode = iota
 
 	OpNegate
 	OpLogicalNot
@@ -65,8 +65,8 @@ const (
 	OpJump
 	OpJumpNotTruthy
 
-	OpReadGlobal
-	OpWriteGlobal
+	OpGetGlobal
+	OpSetGlobal
 
 	OpPop
 )
@@ -77,7 +77,7 @@ type OpDefinition struct {
 }
 
 var definitions = map[OpCode]*OpDefinition{
-	OpReadConstant: {"OpReadConstant", []int{2}}, // Takes two bytes, so up to 65536 constants may be defined
+	OpGetConstant: {"OpGetConstant", []int{2}}, // Takes two bytes, so up to 65536 constants may be defined
 
 	OpNegate:     {"OpNegate", []int{}},
 	OpLogicalNot: {"OpLogicalNot", []int{}},
@@ -98,8 +98,8 @@ var definitions = map[OpCode]*OpDefinition{
 	OpJump:          {"OpJump", []int{2}}, // Program can be up to 65536 instructions long
 	OpJumpNotTruthy: {"OpJumpNotTruthy", []int{2}},
 
-	OpReadGlobal:  {"OpReadGlobal", []int{2}},
-	OpWriteGlobal: {"OpWriteGlobal", []int{2}},
+	OpGetGlobal: {"OpGetGlobal", []int{2}},
+	OpSetGlobal: {"OpSetGlobal", []int{2}},
 
 	OpPop: {"OpPop", []int{}},
 }

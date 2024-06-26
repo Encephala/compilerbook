@@ -8,7 +8,7 @@ func TestMakeInstruction(t *testing.T) {
 		operands []int
 		expected []byte
 	}{
-		{OpReadConstant, []int{65534}, []byte{byte(OpReadConstant), 255, 254}},
+		{OpGetConstant, []int{65534}, []byte{byte(OpGetConstant), 255, 254}},
 		{OpAdd, []int{}, []byte{byte(OpAdd)}},
 	}
 
@@ -36,13 +36,13 @@ func TestMakeInstruction(t *testing.T) {
 func TestInstructionsString(t *testing.T) {
 	instructions := []Instruction{
 		MakeInstruction(OpAdd),
-		MakeInstruction(OpReadConstant, 2),
-		MakeInstruction(OpReadConstant, 65535),
+		MakeInstruction(OpGetConstant, 2),
+		MakeInstruction(OpGetConstant, 65535),
 	}
 
 	expected := `0000 OpAdd
-0001 OpReadConstant 2
-0004 OpReadConstant 65535
+0001 OpGetConstant 2
+0004 OpGetConstant 65535
 `
 
 	concatenated := Instructions{}
@@ -64,7 +64,7 @@ func TestReadOperands(t *testing.T) {
 		operands  []int
 		bytesRead int
 	}{
-		{OpReadConstant, []int{65535}, 2},
+		{OpGetConstant, []int{65535}, 2},
 	}
 
 	for _, test := range tests {

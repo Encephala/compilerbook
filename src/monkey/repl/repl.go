@@ -6,6 +6,7 @@ import (
 	"io"
 	"monkey/compiler"
 	"monkey/lexer"
+	"monkey/object"
 	"monkey/parser"
 	"monkey/vm"
 )
@@ -14,6 +15,10 @@ const PROMPT = ">> "
 
 func Start(in io.Reader, out io.Writer) {
 	scanner := bufio.NewScanner(in)
+
+	constants := []object.Object{}
+	globals := &[vm.GlobalsSize]object.Object{}
+	symbolTable := compiler.NewSymbolTable()
 
 	for {
 		fmt.Fprint(out, PROMPT)
@@ -37,13 +42,19 @@ func Start(in io.Reader, out io.Writer) {
 			continue
 		}
 
-		c := compiler.New()
-		c.Compile(program)
+		c := compiler.NewWithState(constants, symbolTable)
+		err := c.Compile(program)
+		if err != nil {
+			fmt.Fprintf(out, "Compilation failed:\n%s\n", err)
+			continue
+		}
 
-		machine := vm.New(c.Bytecode())
-		err := machine.Execute()
+		// Don't we have to yeet over the stack? Is that not part of a VM's state?
+		machine := vm.NewWithState(c.Bytecode(), globals)
+		err = machine.Execute()
 		if err != nil {
 			fmt.Fprintf(out, "Execution failed:\n%s\n", err)
+			continue
 		}
 
 		result := machine.LastStackTop()

@@ -176,6 +176,52 @@ func TestConditionals(t *testing.T) {
 	runCompilerTests(t, tests)
 }
 
+func TestGlobalLetStatements(t *testing.T) {
+	tests := []compilerTestCase{
+		{
+			input: `
+			let one = 1;
+			let two = 2;`,
+			expectedConstants: []interface{}{1, 2},
+			expectedInstructions: []opcode.Instruction{
+				opcode.MakeInstruction(opcode.OpReadConstant, 0),
+				opcode.MakeInstruction(opcode.OpWriteGlobal, 0),
+				opcode.MakeInstruction(opcode.OpReadConstant, 1),
+				opcode.MakeInstruction(opcode.OpWriteGlobal, 1),
+			},
+		},
+		{
+			input: `
+			let one = 1;
+			one;`,
+			expectedConstants: []interface{}{1},
+			expectedInstructions: []opcode.Instruction{
+				opcode.MakeInstruction(opcode.OpReadConstant, 0),
+				opcode.MakeInstruction(opcode.OpWriteGlobal, 0),
+				opcode.MakeInstruction(opcode.OpReadGlobal, 0),
+				opcode.MakeInstruction(opcode.OpPop),
+			},
+		},
+		{
+			input: `
+			let one = 1;
+			let two = one;
+			two;`,
+			expectedConstants: []interface{}{1},
+			expectedInstructions: []opcode.Instruction{
+				opcode.MakeInstruction(opcode.OpReadConstant, 0),
+				opcode.MakeInstruction(opcode.OpWriteGlobal, 0),
+				opcode.MakeInstruction(opcode.OpReadGlobal, 0),
+				opcode.MakeInstruction(opcode.OpWriteGlobal, 1),
+				opcode.MakeInstruction(opcode.OpReadGlobal, 1),
+				opcode.MakeInstruction(opcode.OpPop),
+			},
+		},
+	}
+
+	runCompilerTests(t, tests)
+}
+
 func runCompilerTests(t *testing.T, tests []compilerTestCase) {
 	for _, test := range tests {
 		program := parse(test.input)

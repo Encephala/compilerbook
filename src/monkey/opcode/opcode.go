@@ -65,6 +65,9 @@ const (
 	OpJump
 	OpJumpNotTruthy
 
+	OpReadGlobal
+	OpWriteGlobal
+
 	OpPop
 )
 
@@ -94,6 +97,9 @@ var definitions = map[OpCode]*OpDefinition{
 
 	OpJump:          {"OpJump", []int{2}}, // Program can be up to 65536 instructions long
 	OpJumpNotTruthy: {"OpJumpNotTruthy", []int{2}},
+
+	OpReadGlobal:  {"OpReadGlobal", []int{2}},
+	OpWriteGlobal: {"OpWriteGlobal", []int{2}},
 
 	OpPop: {"OpPop", []int{}},
 }

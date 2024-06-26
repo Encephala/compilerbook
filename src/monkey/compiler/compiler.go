@@ -11,6 +11,8 @@ type Compiler struct {
 	instructions opcode.Instructions
 	constants    []object.Object
 
+	symbols map[string]int
+
 	lastInstruction     *EmittedInstruction
 	previousInstruction *EmittedInstruction // So we can set lastInstruction after popping off an instruction
 }
@@ -29,6 +31,8 @@ func New() *Compiler {
 	return &Compiler{
 		instructions: []byte{},
 		constants:    []object.Object{},
+
+		symbols: make(map[string]int),
 
 		lastInstruction:     nil,
 		previousInstruction: nil,
@@ -93,6 +97,14 @@ func (c *Compiler) Compile(node ast.Node) {
 		for _, statement := range node.Statements {
 			c.Compile(statement)
 		}
+
+	case *ast.LetStatement:
+		c.Compile(node.Value)
+
+		c.addGlobal(node.Name.Value)
+
+	case *ast.Identifier:
+		c.emit(opcode.OpReadGlobal, c.symbols[node.Value])
 
 	case *ast.InfixExpression:
 		if node.Operator[0] == byte('<') {
@@ -192,4 +204,10 @@ func (c *Compiler) replaceInstruction(position int, newInstruction []byte) {
 	for i := 0; i < len(newInstruction); i++ {
 		c.instructions[position+i] = newInstruction[i]
 	}
+}
+
+func (c *Compiler) addGlobal(name string) {
+	c.emit(opcode.OpWriteGlobal, len(c.symbols))
+
+	c.symbols[name] = len(c.symbols)
 }

@@ -247,18 +247,60 @@ func TestStringExpressions(t *testing.T) {
 	runCompilerTests(t, tests)
 }
 
+func TestArrayLiteral(t *testing.T) {
+	tests := []compilerTestCase{
+		{
+			input:             "[]",
+			expectedConstants: []interface{}{},
+			expectedInstructions: []opcode.Instruction{
+				opcode.MakeInstruction(opcode.OpArray, 0),
+				opcode.MakeInstruction(opcode.OpPop),
+			},
+		},
+		{
+			input:             "[1, 2, 3]",
+			expectedConstants: []interface{}{1, 2, 3},
+			expectedInstructions: []opcode.Instruction{
+				opcode.MakeInstruction(opcode.OpGetConstant, 0),
+				opcode.MakeInstruction(opcode.OpGetConstant, 1),
+				opcode.MakeInstruction(opcode.OpGetConstant, 2),
+				opcode.MakeInstruction(opcode.OpArray, 3),
+				opcode.MakeInstruction(opcode.OpPop),
+			},
+		},
+		{
+			input:             "[1 + 2 - 3]",
+			expectedConstants: []interface{}{1, 2, 3},
+			expectedInstructions: []opcode.Instruction{
+				opcode.MakeInstruction(opcode.OpGetConstant, 0),
+				opcode.MakeInstruction(opcode.OpGetConstant, 1),
+				opcode.MakeInstruction(opcode.OpAdd),
+				opcode.MakeInstruction(opcode.OpGetConstant, 2),
+				opcode.MakeInstruction(opcode.OpSubtract),
+				opcode.MakeInstruction(opcode.OpArray, 1),
+				opcode.MakeInstruction(opcode.OpPop),
+			},
+		},
+	}
+
+	runCompilerTests(t, tests)
+}
+
 func runCompilerTests(t *testing.T, tests []compilerTestCase) {
 	for _, test := range tests {
 		program := parse(test.input)
 
 		compiler := New()
-		compiler.Compile(program)
+		err := compiler.Compile(program)
+		if err != nil {
+			t.Fatalf("Compilation failed: %s\n", err)
+		}
 
 		bytecode := compiler.Bytecode()
 
 		concatenatedInstructions := concatInstructions(test.expectedInstructions)
 
-		err := testConstants(test.expectedConstants, bytecode.Constants)
+		err = testConstants(test.expectedConstants, bytecode.Constants)
 		if err != nil {
 			t.Fatalf("testConstants failed: %s\n", err)
 		}

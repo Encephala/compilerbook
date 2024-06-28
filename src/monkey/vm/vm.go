@@ -158,6 +158,24 @@ func (vm *VM) Execute() error {
 		case opcode.OpPop:
 			vm.pop()
 
+		case opcode.OpArray:
+			length := int(binary.BigEndian.Uint16(vm.instructions[instructionPointer+1:]))
+
+			result := &object.Array{}
+
+			for i := range length {
+				result.Elements = append(result.Elements, vm.stack[vm.stackPointer-length+i])
+			}
+
+			vm.stackPointer -= length
+
+			err := vm.push(result)
+			if err != nil {
+				return err
+			}
+
+			instructionPointer += 2
+
 		default:
 			panic(fmt.Sprintf("Invalid opcode %q", opcode.Lookup(operation).Name))
 		}

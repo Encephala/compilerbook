@@ -69,6 +69,8 @@ const (
 	OpSetGlobal
 
 	OpPop
+
+	OpArray
 )
 
 type OpDefinition struct {
@@ -102,6 +104,8 @@ var definitions = map[OpCode]*OpDefinition{
 	OpSetGlobal: {"OpSetGlobal", []int{2}},
 
 	OpPop: {"OpPop", []int{}},
+
+	OpArray: {"OpArray", []int{2}},
 }
 
 // Book passes a byte as code, I pass the OpCode

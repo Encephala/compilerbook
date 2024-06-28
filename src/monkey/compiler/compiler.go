@@ -231,6 +231,16 @@ func (c *Compiler) Compile(node ast.Node) error {
 
 		c.emit(opcode.OpGetConstant, index)
 
+	case *ast.ArrayLiteral:
+		for _, element := range node.Elements {
+			err := c.Compile(element)
+			if err != nil {
+				return err
+			}
+		}
+
+		c.emit(opcode.OpArray, len(node.Elements))
+
 	default:
 		panic(fmt.Sprintf("Invalid node type: %T", node))
 	}

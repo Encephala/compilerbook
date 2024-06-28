@@ -110,19 +110,41 @@ func TestStringExpressions(t *testing.T) {
 	runVmTests(t, tests)
 }
 
+func TestArrayLiterals(t *testing.T) {
+	tests := []vmTestCase{
+		{
+			"[]",
+			[]int{},
+		},
+		{
+			"[1, 2, 3]",
+			[]int{1, 2, 3},
+		},
+		{
+			"[69]; [1 + 2 - 3]",
+			[]int{0},
+		},
+	}
+
+	runVmTests(t, tests)
+}
+
 func runVmTests(t *testing.T, tests []vmTestCase) {
 	for _, test := range tests {
 		program := parse(test.input)
 
 		compiler := compiler.New()
 
-		compiler.Compile(program)
+		err := compiler.Compile(program)
+		if err != nil {
+			t.Fatalf("Failed to execute: %s\n", err)
+		}
 
 		vm := New(compiler.Bytecode())
 
-		err := vm.Execute()
+		err = vm.Execute()
 		if err != nil {
-			t.Fatalf("Failed to execute: %s", err)
+			t.Fatalf("Failed to execute: %s\n", err)
 		}
 
 		result := vm.LastStackTop()
@@ -154,6 +176,24 @@ func testExpectedObject(t *testing.T, expected interface{}, actual object.Object
 		err := testStringObject(expected, actual)
 		if err != nil {
 			t.Fatalf("Test failed: %s", err)
+		}
+
+	case []int:
+		array, ok := actual.(*object.Array)
+
+		if !ok {
+			t.Fatalf("Object %v not array but %T", actual, actual)
+		}
+
+		if len(array.Elements) != len(expected) {
+			t.Errorf("Wrong number of elements %d, expected %d", len(array.Elements), len(expected))
+		}
+
+		for i, integer := range expected {
+			err := testIntegerObject(int64(integer), array.Elements[i])
+			if err != nil {
+				t.Errorf("testIntegerObject failed: %s\n", err)
+			}
 		}
 
 	default:

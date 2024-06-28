@@ -156,6 +156,7 @@ func (vm *VM) Execute() error {
 			instructionPointer += 2
 
 		case opcode.OpPop:
+			fmt.Println("Popping")
 			vm.pop()
 
 		case opcode.OpArray:
@@ -187,7 +188,7 @@ func (vm *VM) Execute() error {
 
 				hashKey, ok := key.(object.Hashable)
 				if !ok {
-					return fmt.Errorf("Invalid hash key: %s", key.Type())
+					return fmt.Errorf("INVALID HASH KEY: %s", key.Type())
 				}
 
 				result.Pairs[hashKey.HashKey()] = object.HashPair{
@@ -205,6 +206,15 @@ func (vm *VM) Execute() error {
 
 			instructionPointer += 2
 
+		case opcode.OpIndex:
+			index := vm.pop()
+			indexee := vm.pop()
+
+			err := vm.executeIndexExpression(indexee, index)
+			if err != nil {
+				return err
+			}
+
 		default:
 			panic(fmt.Sprintf("Invalid opcode %q", opcode.Lookup(operation).Name))
 		}
@@ -220,7 +230,7 @@ func (vm *VM) push(object object.Object) error {
 
 	vm.stack[vm.stackPointer] = object
 
-	vm.stackPointer += 1
+	vm.stackPointer++
 
 	return nil
 }
@@ -367,6 +377,39 @@ func (vm *VM) executeBinaryOperationString(operation opcode.OpCode, left, right 
 	}
 
 	return vm.push(result)
+}
+
+func (vm *VM) executeIndexExpression(indexee, index object.Object) error {
+	switch indexee := indexee.(type) {
+	case *object.Array:
+		convertedIndex, ok := index.(*object.Integer)
+		if !ok {
+			return fmt.Errorf("INVALID ARRAY INDEX: %v", index)
+		}
+
+		if convertedIndex.Value < 0 || convertedIndex.Value >= int64(len(indexee.Elements)) {
+			return vm.push(Null)
+		}
+
+		return vm.push(indexee.Elements[convertedIndex.Value])
+
+	case *object.Hash:
+		convertedIndex, ok := index.(object.Hashable)
+		if !ok {
+			return fmt.Errorf("INVALID HASH INDEX: %v", index)
+		}
+
+		result, ok := indexee.Pairs[convertedIndex.HashKey()]
+
+		if !ok {
+			return vm.push(Null)
+		}
+
+		return vm.push(result.Value)
+
+	default:
+		panic(fmt.Sprintf("unexpected object.Object: %#v", indexee))
+	}
 }
 
 func isTruthy(value object.Object) bool {

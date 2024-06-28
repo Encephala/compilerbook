@@ -330,6 +330,41 @@ func TestHashLiterals(t *testing.T) {
 	runCompilerTests(t, tests)
 }
 
+func TestIndexExpressions(t *testing.T) {
+	tests := []compilerTestCase{
+		{
+			input:             "[1, 2, 3][1 + 1]",
+			expectedConstants: []interface{}{1, 2, 3, 1, 1},
+			expectedInstructions: []opcode.Instruction{
+				opcode.MakeInstruction(opcode.OpGetConstant, 0),
+				opcode.MakeInstruction(opcode.OpGetConstant, 1),
+				opcode.MakeInstruction(opcode.OpGetConstant, 2),
+				opcode.MakeInstruction(opcode.OpArray, 3),
+				opcode.MakeInstruction(opcode.OpGetConstant, 3),
+				opcode.MakeInstruction(opcode.OpGetConstant, 4),
+				opcode.MakeInstruction(opcode.OpAdd),
+				opcode.MakeInstruction(opcode.OpIndex),
+				opcode.MakeInstruction(opcode.OpPop),
+			},
+		},
+		{
+			input:             "{1: 2}[2 - 1]",
+			expectedConstants: []interface{}{1, 2, 2, 1},
+			expectedInstructions: []opcode.Instruction{
+				opcode.MakeInstruction(opcode.OpGetConstant, 0),
+				opcode.MakeInstruction(opcode.OpGetConstant, 1),
+				opcode.MakeInstruction(opcode.OpHash, 1),
+				opcode.MakeInstruction(opcode.OpGetConstant, 2),
+				opcode.MakeInstruction(opcode.OpGetConstant, 3),
+				opcode.MakeInstruction(opcode.OpSubtract),
+				opcode.MakeInstruction(opcode.OpIndex),
+				opcode.MakeInstruction(opcode.OpPop),
+			},
+		},
+	}
+	runCompilerTests(t, tests)
+}
+
 func runCompilerTests(t *testing.T, tests []compilerTestCase) {
 	for _, test := range tests {
 		program := parse(test.input)

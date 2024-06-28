@@ -97,14 +97,8 @@ func TestGlobalLetStatements(t *testing.T) {
 
 func TestStringExpressions(t *testing.T) {
 	tests := []vmTestCase{
-		{
-			`"deez"`,
-			"deez",
-		},
-		{
-			`"deez" + " " + "nuts"`,
-			"deez nuts",
-		},
+		{`"deez"`, "deez"},
+		{`"deez" + " " + "nuts"`, "deez nuts"},
 	}
 
 	runVmTests(t, tests)
@@ -112,18 +106,9 @@ func TestStringExpressions(t *testing.T) {
 
 func TestArrayLiterals(t *testing.T) {
 	tests := []vmTestCase{
-		{
-			"[]",
-			[]int{},
-		},
-		{
-			"[1, 2, 3]",
-			[]int{1, 2, 3},
-		},
-		{
-			"[69]; [1 + 2 - 3]",
-			[]int{0},
-		},
+		{"[]", []int{}},
+		{"[1, 2, 3]", []int{1, 2, 3}},
+		{"[69]; [1 + 2 - 3]", []int{0}},
 	}
 
 	runVmTests(t, tests)
@@ -131,9 +116,7 @@ func TestArrayLiterals(t *testing.T) {
 
 func TestHashLiterals(t *testing.T) {
 	tests := []vmTestCase{
-		{
-			"{}", map[int]int{},
-		},
+		{"{}", map[int]int{}},
 		{
 			"{1: 2, 2: 3}",
 			map[int]int{
@@ -148,6 +131,22 @@ func TestHashLiterals(t *testing.T) {
 				6: 16,
 			},
 		},
+	}
+
+	runVmTests(t, tests)
+}
+
+func TestIndexExpressions(t *testing.T) {
+	tests := []vmTestCase{
+		{"[1, 2, 3][1]", 2},
+		{"[1, 2, 3][1 + 1]", 3},
+		{"[[1, 2, 3]][0][1]", 2},
+		{"[][0]", Null},
+		{"[1, 2, 3][4]", Null},
+		{"[1, 2, 3][-1]", Null},
+		{"{1: 2, 3: 4}[1]", 2},
+		{"{}[0]", Null},
+		{"{1: 2, 3: 4}[0]", Null},
 	}
 
 	runVmTests(t, tests)

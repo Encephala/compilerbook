@@ -267,6 +267,19 @@ func (c *Compiler) Compile(node ast.Node) error {
 
 		c.emit(opcode.OpHash, len(node.Pairs))
 
+	case *ast.IndexExpression:
+		err := c.Compile(node.Left)
+		if err != nil {
+			return err
+		}
+
+		err = c.Compile(node.Index)
+		if err != nil {
+			return err
+		}
+
+		c.emit(opcode.OpIndex)
+
 	default:
 		panic(fmt.Sprintf("Invalid node type: %T", node))
 	}

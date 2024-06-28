@@ -224,6 +224,13 @@ func (c *Compiler) Compile(node ast.Node) error {
 			c.emit(opcode.OpPushFalse)
 		}
 
+	case *ast.StringLiteral:
+		str := &object.String{Value: node.Value}
+
+		index := c.addConstant(str)
+
+		c.emit(opcode.OpGetConstant, index)
+
 	default:
 		panic(fmt.Sprintf("Invalid node type: %T", node))
 	}

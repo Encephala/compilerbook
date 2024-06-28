@@ -222,6 +222,31 @@ func TestGlobalLetStatements(t *testing.T) {
 	runCompilerTests(t, tests)
 }
 
+func TestStringExpressions(t *testing.T) {
+	tests := []compilerTestCase{
+		{
+			input:             `"deez"`,
+			expectedConstants: []interface{}{"deez"},
+			expectedInstructions: []opcode.Instruction{
+				opcode.MakeInstruction(opcode.OpGetConstant, 0),
+				opcode.MakeInstruction(opcode.OpPop),
+			},
+		},
+		{
+			input:             `"deez" + "nuts"`,
+			expectedConstants: []interface{}{"deez", "nuts"},
+			expectedInstructions: []opcode.Instruction{
+				opcode.MakeInstruction(opcode.OpGetConstant, 0),
+				opcode.MakeInstruction(opcode.OpGetConstant, 1),
+				opcode.MakeInstruction(opcode.OpAdd),
+				opcode.MakeInstruction(opcode.OpPop),
+			},
+		},
+	}
+
+	runCompilerTests(t, tests)
+}
+
 func runCompilerTests(t *testing.T, tests []compilerTestCase) {
 	for _, test := range tests {
 		program := parse(test.input)
@@ -255,30 +280,6 @@ func concatInstructions(instructions []opcode.Instruction) opcode.Instructions {
 	return result
 }
 
-func testConstants(expected []interface{}, actual []object.Object) error {
-	if len(expected) != len(actual) {
-		return fmt.Errorf(
-			"wrong number of constants %d, expected %d",
-			len(actual), len(expected),
-		)
-	}
-
-	for i, constant := range expected {
-		switch constant := constant.(type) {
-		case int:
-			err := testIntegerObject(int64(constant), actual[i])
-			if err != nil {
-				return fmt.Errorf(
-					"constant %d not correct: %s",
-					i, err,
-				)
-			}
-		}
-	}
-
-	return nil
-}
-
 func testInstructions(expected opcode.Instructions, actual opcode.Instructions) error {
 	if len(expected) != len(actual) {
 		return fmt.Errorf(
@@ -298,6 +299,42 @@ func testInstructions(expected opcode.Instructions, actual opcode.Instructions) 
 	return nil
 }
 
+func testConstants(expected []interface{}, actual []object.Object) error {
+	if len(expected) != len(actual) {
+		return fmt.Errorf(
+			"wrong number of constants %d, expected %d",
+			len(actual), len(expected),
+		)
+	}
+
+	for i, constant := range expected {
+		switch constant := constant.(type) {
+		case int:
+			err := testIntegerObject(int64(constant), actual[i])
+			if err != nil {
+				return fmt.Errorf(
+					"constant %d not correct: %s",
+					i, err,
+				)
+			}
+
+		case string:
+			err := testStringObject(constant, actual[i])
+			if err != nil {
+				return fmt.Errorf(
+					"constant %d not correct: %s",
+					i, err,
+				)
+			}
+
+		default:
+			panic(fmt.Sprintf("Invalid test type %T", constant))
+		}
+	}
+
+	return nil
+}
+
 func testIntegerObject(expected int64, actual object.Object) error {
 	converted, ok := actual.(*object.Integer)
 
@@ -308,6 +345,23 @@ func testIntegerObject(expected int64, actual object.Object) error {
 	if converted.Value != expected {
 		return fmt.Errorf(
 			"object value %d is wrong, expected %d",
+			converted.Value, expected,
+		)
+	}
+
+	return nil
+}
+
+func testStringObject(expected string, actual object.Object) error {
+	converted, ok := actual.(*object.String)
+
+	if !ok {
+		return fmt.Errorf("object %v not string but %T", actual, actual)
+	}
+
+	if converted.Value != expected {
+		return fmt.Errorf(
+			"object value %q is wrong, expected %q",
 			converted.Value, expected,
 		)
 	}

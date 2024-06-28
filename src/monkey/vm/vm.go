@@ -112,18 +112,12 @@ func (vm *VM) Execute() error {
 				return nil
 			}
 
-		case opcode.OpAdd, opcode.OpSubtract, opcode.OpMultiply, opcode.OpDivide:
-			err := vm.executeBinaryArithmetic(operation)
+		case opcode.OpAdd, opcode.OpSubtract, opcode.OpMultiply, opcode.OpDivide,
+			opcode.OpEquals, opcode.OpNotEquals, opcode.OpGreaterThan:
+			err := vm.executeBinaryOperation(operation)
 
 			if err != nil {
 				return err
-			}
-
-		case opcode.OpEquals, opcode.OpNotEquals, opcode.OpGreaterThan:
-			err := vm.executeComparison(operation)
-
-			if err != nil {
-				return nil
 			}
 
 		case opcode.OpJump:
@@ -230,18 +224,26 @@ func (vm *VM) executeLogicalNot() error {
 	return vm.push(result)
 }
 
-func (vm *VM) executeBinaryArithmetic(operation opcode.OpCode) error {
+func (vm *VM) executeBinaryOperation(operation opcode.OpCode) error {
 	right := vm.pop()
 	left := vm.pop()
 
 	if left.Type() == object.INTEGER_OBJ && right.Type() == object.INTEGER_OBJ {
-		return vm.executeBinaryArithmeticInteger(operation, left.(*object.Integer), right.(*object.Integer))
+		return vm.executeBinaryOperationInteger(operation, left.(*object.Integer), right.(*object.Integer))
 	}
 
-	panic(fmt.Sprintf("Invalid operand types %T, %T", left.Type(), right.Type()))
+	if left.Type() == object.BOOLEAN_OBJ && right.Type() == object.BOOLEAN_OBJ {
+		return vm.executeBinaryOperationBoolean(operation, left.(*object.Boolean), right.(*object.Boolean))
+	}
+
+	if left.Type() == object.STRING_OBJ && right.Type() == object.STRING_OBJ {
+		return vm.executeBinaryOperationString(operation, left.(*object.String), right.(*object.String))
+	}
+
+	panic(fmt.Sprintf("Invalid operand types %T, %T", left, right))
 }
 
-func (vm *VM) executeBinaryArithmeticInteger(operation opcode.OpCode, left, right *object.Integer) error {
+func (vm *VM) executeBinaryOperationInteger(operation opcode.OpCode, left, right *object.Integer) error {
 	var result object.Object
 
 	switch operation {
@@ -281,22 +283,7 @@ func (vm *VM) executeBinaryArithmeticInteger(operation opcode.OpCode, left, righ
 	return vm.push(result)
 }
 
-func (vm *VM) executeComparison(operation opcode.OpCode) error {
-	right := vm.pop()
-	left := vm.pop()
-
-	if left.Type() == object.INTEGER_OBJ && right.Type() == object.INTEGER_OBJ {
-		return vm.executeComparisonInteger(operation, left.(*object.Integer), right.(*object.Integer))
-	}
-
-	if left.Type() == object.BOOLEAN_OBJ && right.Type() == object.BOOLEAN_OBJ {
-		return vm.executeComparisonBoolean(operation, left, right)
-	}
-
-	panic(fmt.Sprintf("Invalid operand types %T, %T", left.Type(), right.Type()))
-}
-
-func (vm *VM) executeComparisonInteger(operation opcode.OpCode, left, right *object.Integer) error {
+func (vm *VM) executeBinaryOperationBoolean(operation opcode.OpCode, left, right *object.Boolean) error {
 	var result object.Object
 
 	switch operation {
@@ -306,9 +293,6 @@ func (vm *VM) executeComparisonInteger(operation opcode.OpCode, left, right *obj
 	case opcode.OpNotEquals:
 		result = toBoolObject(left.Value != right.Value)
 
-	case opcode.OpGreaterThan:
-		result = toBoolObject(left.Value > right.Value)
-
 	default:
 		panic(fmt.Sprintf("Invalid opcode %q", opcode.Lookup(operation).Name))
 	}
@@ -316,16 +300,20 @@ func (vm *VM) executeComparisonInteger(operation opcode.OpCode, left, right *obj
 	return vm.push(result)
 }
 
-func (vm *VM) executeComparisonBoolean(operation opcode.OpCode, left, right object.Object) error {
+func (vm *VM) executeBinaryOperationString(operation opcode.OpCode, left, right *object.String) error {
 	var result object.Object
 
-	// Pointer comparison, True and False are global (semantically constant) Boolean objects
 	switch operation {
+	case opcode.OpAdd:
+		result = &object.String{
+			Value: left.Value + right.Value,
+		}
+
 	case opcode.OpEquals:
-		result = toBoolObject(left == right)
+		result = toBoolObject(left.Value == right.Value)
 
 	case opcode.OpNotEquals:
-		result = toBoolObject(left != right)
+		result = toBoolObject(left.Value != right.Value)
 
 	default:
 		panic(fmt.Sprintf("Invalid opcode %q", opcode.Lookup(operation).Name))

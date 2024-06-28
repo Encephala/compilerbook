@@ -95,6 +95,21 @@ func TestGlobalLetStatements(t *testing.T) {
 	runVmTests(t, tests)
 }
 
+func TestStringExpressions(t *testing.T) {
+	tests := []vmTestCase{
+		{
+			`"deez"`,
+			"deez",
+		},
+		{
+			`"deez" + " " + "nuts"`,
+			"deez nuts",
+		},
+	}
+
+	runVmTests(t, tests)
+}
+
 func runVmTests(t *testing.T, tests []vmTestCase) {
 	for _, test := range tests {
 		program := parse(test.input)
@@ -125,7 +140,7 @@ func testExpectedObject(t *testing.T, expected interface{}, actual object.Object
 		}
 
 	case bool:
-		err := testBoolObject(bool(expected), actual)
+		err := testBoolObject(expected, actual)
 		if err != nil {
 			t.Fatalf("Test failed: %s", err)
 		}
@@ -133,6 +148,12 @@ func testExpectedObject(t *testing.T, expected interface{}, actual object.Object
 	case *object.Null:
 		if actual != Null {
 			t.Fatalf("Object %v is not Null", actual)
+		}
+
+	case string:
+		err := testStringObject(expected, actual)
+		if err != nil {
+			t.Fatalf("Test failed: %s", err)
 		}
 
 	default:
@@ -167,6 +188,23 @@ func testBoolObject(expected bool, actual object.Object) error {
 	if converted.Value != expected {
 		return fmt.Errorf(
 			"Object value %t is wrong, expected %t",
+			converted.Value, expected,
+		)
+	}
+
+	return nil
+}
+
+func testStringObject(expected string, actual object.Object) error {
+	converted, ok := actual.(*object.String)
+
+	if !ok {
+		return fmt.Errorf("Object %v not boolean but %T", actual, actual)
+	}
+
+	if converted.Value != expected {
+		return fmt.Errorf(
+			"Object value %q is wrong, expected %q",
 			converted.Value, expected,
 		)
 	}

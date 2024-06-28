@@ -286,6 +286,50 @@ func TestArrayLiteral(t *testing.T) {
 	runCompilerTests(t, tests)
 }
 
+func TestHashLiterals(t *testing.T) {
+	tests := []compilerTestCase{
+		{
+			input:             "{}",
+			expectedConstants: []interface{}{},
+			expectedInstructions: []opcode.Instruction{
+				opcode.MakeInstruction(opcode.OpHash, 0),
+				opcode.MakeInstruction(opcode.OpPop),
+			},
+		},
+		{
+			input:             "{1: 2, 5: 6, 3: 4}",
+			expectedConstants: []interface{}{1, 2, 3, 4, 5, 6},
+			expectedInstructions: []opcode.Instruction{
+				opcode.MakeInstruction(opcode.OpGetConstant, 0),
+				opcode.MakeInstruction(opcode.OpGetConstant, 1),
+				opcode.MakeInstruction(opcode.OpGetConstant, 2),
+				opcode.MakeInstruction(opcode.OpGetConstant, 3),
+				opcode.MakeInstruction(opcode.OpGetConstant, 4),
+				opcode.MakeInstruction(opcode.OpGetConstant, 5),
+				opcode.MakeInstruction(opcode.OpHash, 3),
+				opcode.MakeInstruction(opcode.OpPop),
+			},
+		},
+		{
+			input:             "{1: 2 + 3, 4: 5 * 6}",
+			expectedConstants: []interface{}{1, 2, 3, 4, 5, 6},
+			expectedInstructions: []opcode.Instruction{
+				opcode.MakeInstruction(opcode.OpGetConstant, 0),
+				opcode.MakeInstruction(opcode.OpGetConstant, 1),
+				opcode.MakeInstruction(opcode.OpGetConstant, 2),
+				opcode.MakeInstruction(opcode.OpAdd),
+				opcode.MakeInstruction(opcode.OpGetConstant, 3),
+				opcode.MakeInstruction(opcode.OpGetConstant, 4),
+				opcode.MakeInstruction(opcode.OpGetConstant, 5),
+				opcode.MakeInstruction(opcode.OpMultiply),
+				opcode.MakeInstruction(opcode.OpHash, 2),
+				opcode.MakeInstruction(opcode.OpPop),
+			},
+		},
+	}
+	runCompilerTests(t, tests)
+}
+
 func runCompilerTests(t *testing.T, tests []compilerTestCase) {
 	for _, test := range tests {
 		program := parse(test.input)

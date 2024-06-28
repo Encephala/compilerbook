@@ -129,6 +129,30 @@ func TestArrayLiterals(t *testing.T) {
 	runVmTests(t, tests)
 }
 
+func TestHashLiterals(t *testing.T) {
+	tests := []vmTestCase{
+		{
+			"{}", map[int]int{},
+		},
+		{
+			"{1: 2, 2: 3}",
+			map[int]int{
+				1: 2,
+				2: 3,
+			},
+		},
+		{
+			"{1 + 1: 2 * 2, 3 + 3: 4 * 4}",
+			map[int]int{
+				2: 4,
+				6: 16,
+			},
+		},
+	}
+
+	runVmTests(t, tests)
+}
+
 func runVmTests(t *testing.T, tests []vmTestCase) {
 	for _, test := range tests {
 		program := parse(test.input)
@@ -191,6 +215,31 @@ func testExpectedObject(t *testing.T, expected interface{}, actual object.Object
 
 		for i, integer := range expected {
 			err := testIntegerObject(int64(integer), array.Elements[i])
+			if err != nil {
+				t.Errorf("testIntegerObject failed: %s\n", err)
+			}
+		}
+
+	case map[int]int:
+		hash, ok := actual.(*object.Hash)
+
+		if !ok {
+			t.Fatalf("Object %v not hash but %T", actual, actual)
+		}
+
+		if len(hash.Pairs) != len(expected) {
+			t.Errorf("Wrong number of elements %d, expected %d", len(hash.Pairs), len(expected))
+		}
+
+		for key, value := range expected {
+			pair, ok := hash.Pairs[(&object.Integer{Value: int64(key)}).HashKey()]
+
+			if !ok {
+				t.Errorf("Key %v not found in hash", key)
+				continue
+			}
+
+			err := testIntegerObject(int64(value), pair.Value)
 			if err != nil {
 				t.Errorf("testIntegerObject failed: %s\n", err)
 			}

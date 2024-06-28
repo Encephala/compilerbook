@@ -71,6 +71,7 @@ const (
 	OpPop
 
 	OpArray
+	OpHash
 )
 
 type OpDefinition struct {
@@ -106,6 +107,7 @@ var definitions = map[OpCode]*OpDefinition{
 	OpPop: {"OpPop", []int{}},
 
 	OpArray: {"OpArray", []int{2}},
+	OpHash:  {"OpHash", []int{2}},
 }
 
 // Book passes a byte as code, I pass the OpCode

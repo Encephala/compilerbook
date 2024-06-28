@@ -176,6 +176,35 @@ func (vm *VM) Execute() error {
 
 			instructionPointer += 2
 
+		case opcode.OpHash:
+			length := int(binary.BigEndian.Uint16(vm.instructions[instructionPointer+1:]))
+
+			result := &object.Hash{Pairs: make(map[object.HashKey]object.HashPair)}
+
+			for i := range length {
+				key := vm.stack[vm.stackPointer-length*2+2*i]
+				value := vm.stack[vm.stackPointer-length*2+2*i+1]
+
+				hashKey, ok := key.(object.Hashable)
+				if !ok {
+					return fmt.Errorf("Invalid hash key: %s", key.Type())
+				}
+
+				result.Pairs[hashKey.HashKey()] = object.HashPair{
+					Key:   key,
+					Value: value,
+				}
+			}
+
+			vm.stackPointer -= length * 2
+
+			err := vm.push(result)
+			if err != nil {
+				return err
+			}
+
+			instructionPointer += 2
+
 		default:
 			panic(fmt.Sprintf("Invalid opcode %q", opcode.Lookup(operation).Name))
 		}

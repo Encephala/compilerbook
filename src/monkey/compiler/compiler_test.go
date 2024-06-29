@@ -463,6 +463,46 @@ func TestCompilerScopes(t *testing.T) {
 	}
 }
 
+func TestFunctionCalls(t *testing.T) {
+	tests := []compilerTestCase{
+		{
+			input: "fn() { 24 }();",
+			expectedConstants: []interface{}{
+				24,
+				[]opcode.Instruction{
+					opcode.MakeInstruction(opcode.OpGetConstant, 0),
+					opcode.MakeInstruction(opcode.OpReturnValue),
+				},
+			},
+			expectedInstructions: []opcode.Instruction{
+				opcode.MakeInstruction(opcode.OpGetConstant, 1),
+				opcode.MakeInstruction(opcode.OpCall),
+				opcode.MakeInstruction(opcode.OpPop),
+			},
+		},
+		{
+			input: `let function = fn() { 24 };
+			function()`,
+			expectedConstants: []interface{}{
+				24,
+				[]opcode.Instruction{
+					opcode.MakeInstruction(opcode.OpGetConstant, 0),
+					opcode.MakeInstruction(opcode.OpReturnValue),
+				},
+			},
+			expectedInstructions: []opcode.Instruction{
+				opcode.MakeInstruction(opcode.OpGetConstant, 1),
+				opcode.MakeInstruction(opcode.OpSetGlobal, 0),
+				opcode.MakeInstruction(opcode.OpGetGlobal, 0),
+				opcode.MakeInstruction(opcode.OpCall),
+				opcode.MakeInstruction(opcode.OpPop),
+			},
+		},
+	}
+
+	runCompilerTests(t, tests)
+}
+
 func runCompilerTests(t *testing.T, tests []compilerTestCase) {
 	for _, test := range tests {
 		program := parse(test.input)

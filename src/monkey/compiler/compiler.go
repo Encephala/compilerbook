@@ -367,6 +367,14 @@ func (c *Compiler) Compile(node ast.Node) error {
 
 		c.emit(opcode.OpReturnValue)
 
+	case *ast.CallExpression:
+		err := c.Compile(node.Function)
+		if err != nil {
+			return nil
+		}
+
+		c.emit(opcode.OpCall)
+
 	default:
 		panic(fmt.Sprintf("Invalid node type: %T", node))
 	}

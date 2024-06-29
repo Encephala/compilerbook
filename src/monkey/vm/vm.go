@@ -10,6 +10,7 @@ import (
 
 const StackSize = 2048
 const GlobalsSize = 65536 // Matching sixteen-bit operand of OpSetGlobal/OpGetGlobal
+const MaxFrames = 1024
 
 var True = &object.Boolean{Value: true}
 var False = &object.Boolean{Value: false}
@@ -24,48 +25,68 @@ func toBoolObject(b bool) *object.Boolean {
 }
 
 type VM struct {
-	instructions opcode.Instructions
-	constants    []object.Object
+	constants []object.Object
 
 	stack        [StackSize]object.Object
 	stackPointer int // Next *free* slot in the stack, i.e. current length
 
 	globals    *[GlobalsSize]object.Object
 	numGlobals int
+
+	frames     [MaxFrames]*Frame
+	frameIndex int
 }
 
 func New(bytecode *compiler.Bytecode) VM {
+	mainFunction := &object.CompiledFunction{Instructions: bytecode.Instructions}
+	mainFrame := NewFrame(mainFunction)
+
 	return VM{
-		instructions: bytecode.Instructions,
-		constants:    bytecode.Constants,
+		constants: bytecode.Constants,
 
 		stack:        [StackSize]object.Object{nil},
 		stackPointer: 0,
 
 		globals:    &[GlobalsSize]object.Object{nil},
 		numGlobals: 0,
+
+		frames:     [MaxFrames]*Frame{0: mainFrame},
+		frameIndex: 0,
 	}
 }
 
 func NewWithState(bytecode *compiler.Bytecode, state *[GlobalsSize]object.Object) VM {
+	mainFunction := &object.CompiledFunction{Instructions: bytecode.Instructions}
+	mainFrame := NewFrame(mainFunction)
+
 	return VM{
-		instructions: bytecode.Instructions,
-		constants:    bytecode.Constants,
+		constants: bytecode.Constants,
 
 		stack:        [StackSize]object.Object{},
 		stackPointer: 0,
 
 		globals:    state,
 		numGlobals: 0,
+
+		frames:     [MaxFrames]*Frame{0: mainFrame},
+		frameIndex: 0,
 	}
 }
 
 func (vm *VM) Execute() error {
-	// Can we use this range or do we have to manually iterate?
-	// I think we have to manually iterate because we have to be able to jump the instructionPointer
-	for instructionPointer := 0; instructionPointer < len(vm.instructions); instructionPointer++ {
+	var instructionPointer int
+	var instructions opcode.Instructions
+	var operation opcode.OpCode
+
+	for vm.currentFrame().instructionPointer < len(*vm.currentFrame().Instructions()) {
+		instructionPointer = vm.currentFrame().instructionPointer
+		instructions = *vm.currentFrame().Instructions()
+
+		// Determine current instruction, then increment
+		vm.currentFrame().instructionPointer++
+
 		// Fetch
-		operation := opcode.OpCode(vm.instructions[instructionPointer])
+		operation = opcode.OpCode(instructions[instructionPointer])
 
 		// Decode & Execute
 		switch operation {
@@ -73,14 +94,14 @@ func (vm *VM) Execute() error {
 			// Index of an OpConstant is two bytes wide
 			// Don't look up width using opcode.Lookup, that is a lot of operations,
 			// Hardcode that we know how big it is
-			index := binary.BigEndian.Uint16(vm.instructions[instructionPointer+1:])
+			index := binary.BigEndian.Uint16(instructions[instructionPointer+1:])
 
 			err := vm.push(vm.constants[index])
 			if err != nil {
 				return err
 			}
 
-			instructionPointer += 2
+			vm.currentFrame().instructionPointer += 2
 
 		case opcode.OpPushTrue:
 			err := vm.push(True)
@@ -121,46 +142,44 @@ func (vm *VM) Execute() error {
 			}
 
 		case opcode.OpJump:
-			newPosition := int(binary.BigEndian.Uint16(vm.instructions[instructionPointer+1:]))
+			newPosition := int(binary.BigEndian.Uint16(instructions[instructionPointer+1:]))
 
-			// Have to decrement by one because the instruction loop post-increments by one
-			instructionPointer = newPosition - 1
+			vm.currentFrame().instructionPointer = newPosition
 
 		case opcode.OpJumpNotTruthy:
 			condition := vm.pop()
 
 			if !isTruthy(condition) {
-				newPosition := int(binary.BigEndian.Uint16(vm.instructions[instructionPointer+1:]))
+				newPosition := int(binary.BigEndian.Uint16(instructions[instructionPointer+1:]))
 
-				instructionPointer = newPosition - 1
+				vm.currentFrame().instructionPointer = newPosition
 			} else {
 				// Skip jump target
-				instructionPointer += 2
+				vm.currentFrame().instructionPointer += 2
 			}
 
 		case opcode.OpSetGlobal:
-			index := int(binary.BigEndian.Uint16(vm.instructions[instructionPointer+1:]))
+			index := int(binary.BigEndian.Uint16(instructions[instructionPointer+1:]))
 
 			vm.globals[index] = vm.pop()
 
-			instructionPointer += 2
+			vm.currentFrame().instructionPointer += 2
 
 		case opcode.OpGetGlobal:
-			index := int(binary.BigEndian.Uint16(vm.instructions[instructionPointer+1:]))
+			index := int(binary.BigEndian.Uint16(instructions[instructionPointer+1:]))
 
 			err := vm.push(vm.globals[index])
 			if err != nil {
 				return err
 			}
 
-			instructionPointer += 2
+			vm.currentFrame().instructionPointer += 2
 
 		case opcode.OpPop:
-			fmt.Println("Popping")
 			vm.pop()
 
 		case opcode.OpArray:
-			length := int(binary.BigEndian.Uint16(vm.instructions[instructionPointer+1:]))
+			length := int(binary.BigEndian.Uint16(instructions[instructionPointer+1:]))
 
 			result := &object.Array{}
 
@@ -175,10 +194,10 @@ func (vm *VM) Execute() error {
 				return err
 			}
 
-			instructionPointer += 2
+			vm.currentFrame().instructionPointer += 2
 
 		case opcode.OpHash:
-			length := int(binary.BigEndian.Uint16(vm.instructions[instructionPointer+1:]))
+			length := int(binary.BigEndian.Uint16(instructions[instructionPointer+1:]))
 
 			result := &object.Hash{Pairs: make(map[object.HashKey]object.HashPair)}
 
@@ -204,7 +223,7 @@ func (vm *VM) Execute() error {
 				return err
 			}
 
-			instructionPointer += 2
+			vm.currentFrame().instructionPointer += 2
 
 		case opcode.OpIndex:
 			index := vm.pop()
@@ -252,6 +271,22 @@ func (vm *VM) StackTop() object.Object {
 	}
 
 	return vm.stack[vm.stackPointer-1]
+}
+
+func (vm *VM) currentFrame() *Frame {
+	return vm.frames[vm.frameIndex]
+}
+
+func (vm *VM) pushFrame(frame *Frame) {
+	vm.frameIndex++
+	vm.frames[vm.frameIndex] = frame
+}
+
+func (vm *VM) popFrame() *Frame {
+	result := vm.frames[vm.frameIndex]
+
+	vm.frameIndex--
+	return result
 }
 
 // For tests

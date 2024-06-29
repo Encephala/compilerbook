@@ -234,6 +234,28 @@ func (vm *VM) Execute() error {
 				return err
 			}
 
+		case opcode.OpCall:
+			function, ok := vm.pop().(*object.CompiledFunction)
+			if !ok {
+				return fmt.Errorf("Tried calling non-function %v\n", vm.stack[vm.stackPointer-1])
+			}
+
+			frame := NewFrame(function)
+			vm.pushFrame(frame)
+
+		case opcode.OpReturnValue:
+			// Return value is already sitting on top of the stack
+			// Returning is therefore a no-op by the calling convention
+			// Only have to return control flow to the parent context
+			vm.popFrame()
+
+		case opcode.OpReturn:
+			// There is no value sitting on the stack for us to clean up
+			// (I think?)
+			vm.push(Null)
+
+			vm.popFrame()
+
 		default:
 			panic(fmt.Sprintf("Invalid opcode %q", opcode.Lookup(operation).Name))
 		}

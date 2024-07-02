@@ -503,6 +503,79 @@ func TestFunctionCalls(t *testing.T) {
 	runCompilerTests(t, tests)
 }
 
+func TestLetStatementsScopes(t *testing.T) {
+	tests := []compilerTestCase{
+		{
+			input: `let num = 55;
+					fn() { num }`,
+			expectedConstants: []interface{}{
+				55,
+				[]opcode.Instruction{
+					opcode.MakeInstruction(opcode.OpGetGlobal, 0),
+					opcode.MakeInstruction(opcode.OpReturnValue),
+				},
+			},
+			expectedInstructions: []opcode.Instruction{
+				opcode.MakeInstruction(opcode.OpGetConstant, 0),
+				opcode.MakeInstruction(opcode.OpSetGlobal, 0),
+				opcode.MakeInstruction(opcode.OpGetConstant, 1),
+				opcode.MakeInstruction(opcode.OpPop),
+			},
+		},
+		{
+			input: `fun() {
+			let num = 55;
+			num
+			}`,
+			expectedConstants: []interface{}{
+				55,
+				[]opcode.Instruction{
+					opcode.MakeInstruction(opcode.OpGetConstant, 0),
+					opcode.MakeInstruction(opcode.OpSetLocal, 0),
+					opcode.MakeInstruction(opcode.OpGetLocal, 0),
+					opcode.MakeInstruction(opcode.OpReturnValue),
+				},
+			},
+			expectedInstructions: []opcode.Instruction{
+				opcode.MakeInstruction(opcode.OpGetConstant, 1),
+				opcode.MakeInstruction(opcode.OpPop),
+			},
+		},
+		{
+			input: `c = 99
+			fn() {
+			let a = 55;
+			let b = 77;
+			a + b + c
+			}`,
+			expectedConstants: []interface{}{
+				99,
+				55,
+				77,
+				[]opcode.Instruction{
+					opcode.MakeInstruction(opcode.OpGetConstant, 0),
+					opcode.MakeInstruction(opcode.OpSetGlobal, 0),
+					opcode.MakeInstruction(opcode.OpGetConstant, 1),
+					opcode.MakeInstruction(opcode.OpSetLocal, 0),
+					opcode.MakeInstruction(opcode.OpGetConstant, 2),
+					opcode.MakeInstruction(opcode.OpSetLocal, 1),
+					opcode.MakeInstruction(opcode.OpGetLocal, 0),
+					opcode.MakeInstruction(opcode.OpGetLocal, 1),
+					opcode.MakeInstruction(opcode.OpGetGlobal, 0),
+					opcode.MakeInstruction(opcode.OpAdd),
+					opcode.MakeInstruction(opcode.OpReturnValue),
+				},
+			},
+			expectedInstructions: []opcode.Instruction{
+				opcode.MakeInstruction(opcode.OpGetConstant, 3),
+				opcode.MakeInstruction(opcode.OpPop),
+			},
+		},
+	}
+
+	runCompilerTests(t, tests)
+}
+
 func runCompilerTests(t *testing.T, tests []compilerTestCase) {
 	for _, test := range tests {
 		program := parse(test.input)

@@ -3,7 +3,8 @@ package compiler
 type SymbolScope int
 
 const (
-	GlobalScope SymbolScope = 0
+	GlobalScope SymbolScope = iota
+	LocalScope
 )
 
 type Symbol struct {
@@ -13,7 +14,8 @@ type Symbol struct {
 }
 
 type SymbolTable struct {
-	store map[string]Symbol
+	parent *SymbolTable
+	store  map[string]Symbol
 }
 
 func (st *SymbolTable) Len() int {
@@ -21,15 +23,25 @@ func (st *SymbolTable) Len() int {
 }
 
 func NewSymbolTable() *SymbolTable {
-	return &SymbolTable{make(map[string]Symbol)}
+	return &SymbolTable{nil, make(map[string]Symbol)}
+}
+
+func NewEnclosedSymbolTable(parent *SymbolTable) *SymbolTable {
+	return &SymbolTable{parent, make(map[string]Symbol)}
 }
 
 func (st *SymbolTable) Define(name string) Symbol {
-	// TODO: insert in non-global scopes
+	var scope SymbolScope
+
+	if st.parent == nil {
+		scope = GlobalScope
+	} else {
+		scope = LocalScope
+	}
 
 	result := Symbol{
 		Name:  name,
-		Scope: GlobalScope,
+		Scope: scope,
 		Index: st.Len(),
 	}
 
@@ -40,6 +52,10 @@ func (st *SymbolTable) Define(name string) Symbol {
 
 func (st *SymbolTable) Resolve(name string) (Symbol, bool) {
 	result, ok := st.store[name]
+
+	if !ok && st.parent != nil {
+		return st.parent.Resolve(name)
+	}
 
 	return result, ok
 }

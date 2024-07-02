@@ -235,16 +235,24 @@ func (vm *VM) Execute() error {
 			}
 
 		case opcode.OpCall:
-			function, ok := vm.pop().(*object.CompiledFunction)
+			numberOfArguments := int(instructions[instructionPointer+1])
+			vm.currentFrame().instructionPointer++
+
+			basePointer := vm.stackPointer - numberOfArguments
+
+			function, ok := vm.stack[basePointer-1].(*object.CompiledFunction)
 			if !ok {
-				return fmt.Errorf("TRIED CALLING NON-FUNCTION %v", vm.stack[vm.stackPointer-1])
+				return fmt.Errorf("TRIED CALLING NON-FUNCTION %v", vm.stack[vm.stackPointer])
 			}
 
-			frame := NewFrame(function, vm.stackPointer)
+			if numberOfArguments != function.NumberOfParameters {
+				return fmt.Errorf("wrong number of arguments %d, expected %d", numberOfArguments, function.NumberOfParameters)
+			}
 
-			vm.stackPointer = frame.basePointer + function.NumberOfLocals
-
+			frame := NewFrame(function, basePointer)
 			vm.pushFrame(frame)
+
+			vm.stackPointer += function.NumberOfLocals
 
 		case opcode.OpSetLocal:
 			index := int(instructions[instructionPointer+1])
@@ -271,19 +279,15 @@ func (vm *VM) Execute() error {
 			returnValue := vm.pop()
 
 			vm.stackPointer = frame.basePointer
-			err := vm.push(returnValue)
-			if err != nil {
-				return err
-			}
+
+			vm.stack[vm.stackPointer-1] = returnValue
 
 		case opcode.OpReturn:
 			frame := vm.popFrame()
 
 			vm.stackPointer = frame.basePointer
-			err := vm.push(Null)
-			if err != nil {
-				return err
-			}
+
+			vm.stack[vm.stackPointer-1] = Null
 
 		default:
 			panic(fmt.Sprintf("Invalid opcode %q", opcode.Lookup(operation).Name))

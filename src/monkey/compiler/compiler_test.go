@@ -485,7 +485,7 @@ func TestFunctionCalls(t *testing.T) {
 			},
 			expectedInstructions: []opcode.Instruction{
 				opcode.MakeInstruction(opcode.OpGetConstant, 1),
-				opcode.MakeInstruction(opcode.OpCall),
+				opcode.MakeInstruction(opcode.OpCall, 0),
 				opcode.MakeInstruction(opcode.OpPop),
 			},
 		},
@@ -503,7 +503,53 @@ func TestFunctionCalls(t *testing.T) {
 				opcode.MakeInstruction(opcode.OpGetConstant, 1),
 				opcode.MakeInstruction(opcode.OpSetGlobal, 0),
 				opcode.MakeInstruction(opcode.OpGetGlobal, 0),
-				opcode.MakeInstruction(opcode.OpCall),
+				opcode.MakeInstruction(opcode.OpCall, 0),
+				opcode.MakeInstruction(opcode.OpPop),
+			},
+		},
+		{
+			input: `let function = fn(a) { a };
+			function(69);`,
+			expectedConstants: []interface{}{
+				[]opcode.Instruction{
+					opcode.MakeInstruction(opcode.OpGetLocal, 0),
+					opcode.MakeInstruction(opcode.OpReturnValue),
+				},
+				69,
+			},
+			expectedInstructions: []opcode.Instruction{
+				opcode.MakeInstruction(opcode.OpGetConstant, 0),
+				opcode.MakeInstruction(opcode.OpSetGlobal, 0),
+				opcode.MakeInstruction(opcode.OpGetGlobal, 0),
+				opcode.MakeInstruction(opcode.OpGetConstant, 1),
+				opcode.MakeInstruction(opcode.OpCall, 1),
+				opcode.MakeInstruction(opcode.OpPop),
+			},
+		},
+		{
+			input: `let function = fn(a, b, c) { a; b; c };
+			function(69, 420, 0);`,
+			expectedConstants: []interface{}{
+				[]opcode.Instruction{
+					opcode.MakeInstruction(opcode.OpGetLocal, 0),
+					opcode.MakeInstruction(opcode.OpPop),
+					opcode.MakeInstruction(opcode.OpGetLocal, 1),
+					opcode.MakeInstruction(opcode.OpPop),
+					opcode.MakeInstruction(opcode.OpGetLocal, 2),
+					opcode.MakeInstruction(opcode.OpReturnValue),
+				},
+				69,
+				420,
+				0,
+			},
+			expectedInstructions: []opcode.Instruction{
+				opcode.MakeInstruction(opcode.OpGetConstant, 0),
+				opcode.MakeInstruction(opcode.OpSetGlobal, 0),
+				opcode.MakeInstruction(opcode.OpGetGlobal, 0),
+				opcode.MakeInstruction(opcode.OpGetConstant, 1),
+				opcode.MakeInstruction(opcode.OpGetConstant, 2),
+				opcode.MakeInstruction(opcode.OpGetConstant, 3),
+				opcode.MakeInstruction(opcode.OpCall, 3),
 				opcode.MakeInstruction(opcode.OpPop),
 			},
 		},

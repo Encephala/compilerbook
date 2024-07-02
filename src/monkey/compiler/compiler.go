@@ -347,6 +347,10 @@ func (c *Compiler) Compile(node ast.Node) error {
 	case *ast.FunctionLiteral:
 		c.enterScope()
 
+		for _, parameter := range node.Parameters {
+			c.symbols.Define(parameter.TokenLiteral())
+		}
+
 		err := c.Compile(node.Body)
 		if err != nil {
 			return err
@@ -374,7 +378,11 @@ func (c *Compiler) Compile(node ast.Node) error {
 		numberOfLocals := c.symbols.Len()
 
 		instructions := c.leaveScope()
-		result := &object.CompiledFunction{Instructions: instructions, NumberOfLocals: numberOfLocals}
+		result := &object.CompiledFunction{
+			Instructions:       instructions,
+			NumberOfLocals:     numberOfLocals,
+			NumberOfParameters: len(node.Parameters),
+		}
 		index := c.addConstant(result)
 
 		c.emit(opcode.OpGetConstant, index)
@@ -393,7 +401,14 @@ func (c *Compiler) Compile(node ast.Node) error {
 			return nil
 		}
 
-		c.emit(opcode.OpCall)
+		for _, argument := range node.Arguments {
+			err := c.Compile(argument)
+			if err != nil {
+				return err
+			}
+		}
+
+		c.emit(opcode.OpCall, len(node.Arguments))
 
 	default:
 		panic(fmt.Sprintf("Invalid node type: %T", node))

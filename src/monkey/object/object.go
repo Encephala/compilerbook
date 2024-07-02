@@ -118,8 +118,9 @@ func (f *Function) Inspect() string {
 }
 
 type CompiledFunction struct {
-	Instructions   opcode.Instructions
-	NumberOfLocals int
+	Instructions       opcode.Instructions
+	NumberOfLocals     int
+	NumberOfParameters int
 }
 
 func (cf *CompiledFunction) Type() ObjectType { return COMPILED_FUNCTION_OBJ }

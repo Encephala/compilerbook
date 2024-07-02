@@ -85,12 +85,18 @@ func New() *Compiler {
 }
 
 func NewWithState(constants []object.Object, symbols *SymbolTable) *Compiler {
+	mainScope := &CompilationScope{
+		instructions:        &opcode.Instructions{},
+		lastInstruction:     nil,
+		previousInstruction: nil,
+	}
+
 	return &Compiler{
 		constants: constants,
 
 		symbols: symbols,
 
-		scopes:     []*CompilationScope{},
+		scopes:     []*CompilationScope{mainScope},
 		scopeIndex: 0,
 	}
 }

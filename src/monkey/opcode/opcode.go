@@ -67,6 +67,8 @@ const (
 
 	OpGetGlobal
 	OpSetGlobal
+	OpGetLocal
+	OpSetLocal
 
 	OpPop
 
@@ -108,6 +110,8 @@ var definitions = map[OpCode]*OpDefinition{
 
 	OpGetGlobal: {"OpGetGlobal", []int{2}},
 	OpSetGlobal: {"OpSetGlobal", []int{2}},
+	OpGetLocal:  {"OpGetLocal", []int{1}},
+	OpSetLocal:  {"OpSetLocal", []int{1}},
 
 	OpPop: {"OpPop", []int{}},
 
@@ -146,7 +150,7 @@ func MakeInstruction(code OpCode, operands ...int) Instruction {
 	for i, operand := range operands {
 		switch definition.OperandWidths[i] {
 		case 1:
-			result[offset] = uint8(operand)
+			result[offset] = byte(operand)
 
 		case 2:
 			binary.BigEndian.PutUint16(result[offset:], uint16(operand))

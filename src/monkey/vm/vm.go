@@ -39,7 +39,7 @@ type VM struct {
 
 func New(bytecode *compiler.Bytecode) VM {
 	mainFunction := &object.CompiledFunction{Instructions: bytecode.Instructions}
-	mainFrame := NewFrame(mainFunction)
+	mainFrame := NewFrame(mainFunction, 0)
 
 	return VM{
 		constants: bytecode.Constants,
@@ -57,7 +57,7 @@ func New(bytecode *compiler.Bytecode) VM {
 
 func NewWithState(bytecode *compiler.Bytecode, state *[GlobalsSize]object.Object) VM {
 	mainFunction := &object.CompiledFunction{Instructions: bytecode.Instructions}
-	mainFrame := NewFrame(mainFunction)
+	mainFrame := NewFrame(mainFunction, 0)
 
 	return VM{
 		constants: bytecode.Constants,
@@ -237,24 +237,53 @@ func (vm *VM) Execute() error {
 		case opcode.OpCall:
 			function, ok := vm.pop().(*object.CompiledFunction)
 			if !ok {
-				return fmt.Errorf("Tried calling non-function %v\n", vm.stack[vm.stackPointer-1])
+				return fmt.Errorf("TRIED CALLING NON-FUNCTION %v", vm.stack[vm.stackPointer-1])
 			}
 
-			frame := NewFrame(function)
+			frame := NewFrame(function, vm.stackPointer)
+
+			vm.stackPointer = frame.basePointer + function.NumberOfLocals
+
 			vm.pushFrame(frame)
 
+		case opcode.OpSetLocal:
+			index := int(instructions[instructionPointer+1])
+			vm.currentFrame().instructionPointer += 1
+
+			value := vm.pop()
+
+			vm.stack[vm.currentFrame().basePointer+index] = value
+
+		case opcode.OpGetLocal:
+			index := int(instructions[instructionPointer+1])
+			vm.currentFrame().instructionPointer += 1
+
+			value := vm.stack[vm.currentFrame().basePointer+index]
+
+			err := vm.push(value)
+			if err != nil {
+				return err
+			}
+
 		case opcode.OpReturnValue:
-			// Return value is already sitting on top of the stack
-			// Returning is therefore a no-op by the calling convention
-			// Only have to return control flow to the parent context
-			vm.popFrame()
+			frame := vm.popFrame()
+
+			returnValue := vm.pop()
+
+			vm.stackPointer = frame.basePointer
+			err := vm.push(returnValue)
+			if err != nil {
+				return err
+			}
 
 		case opcode.OpReturn:
-			// There is no value sitting on the stack for us to clean up
-			// (I think?)
-			vm.push(Null)
+			frame := vm.popFrame()
 
-			vm.popFrame()
+			vm.stackPointer = frame.basePointer
+			err := vm.push(Null)
+			if err != nil {
+				return err
+			}
 
 		default:
 			panic(fmt.Sprintf("Invalid opcode %q", opcode.Lookup(operation).Name))

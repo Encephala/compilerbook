@@ -365,8 +365,10 @@ func (c *Compiler) Compile(node ast.Node) error {
 			c.emit(opcode.OpReturn)
 		}
 
+		numberOfLocals := c.symbols.Len()
+
 		instructions := c.leaveScope()
-		result := &object.CompiledFunction{Instructions: instructions}
+		result := &object.CompiledFunction{Instructions: instructions, NumberOfLocals: numberOfLocals}
 		index := c.addConstant(result)
 
 		c.emit(opcode.OpGetConstant, index)

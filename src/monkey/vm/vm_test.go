@@ -244,6 +244,18 @@ func TestCallingFunctionsWithArgumentsAndBindings(t *testing.T) {
 			expected: 10,
 		},
 		{
+			input: `let one = fn() { 1; };
+			let sum = fn(a, b) { return a + b; };
+			sum(one() + one(), one())`,
+			expected: 3,
+		},
+		{
+			input: `let one = fn() { 1; };
+			let sum = fn(a, b) { return a + b; };
+			sum(sum(one(), one()), one())`,
+			expected: 3,
+		},
+		{
 			input: `let global = 10;
 
 			let sum = fn(a, b) {

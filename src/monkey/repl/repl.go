@@ -49,6 +49,8 @@ func Start(in io.Reader, out io.Writer) {
 			continue
 		}
 
+		constants = c.Bytecode().Constants
+
 		// Don't we have to yeet over the stack? Is that not part of a VM's state?
 		machine := vm.NewWithState(c.Bytecode(), globals)
 		err = machine.Execute()

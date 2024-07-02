@@ -14,7 +14,7 @@ type Symbol struct {
 }
 
 type SymbolTable struct {
-	parent *SymbolTable
+	Parent *SymbolTable
 	store  map[string]Symbol
 }
 
@@ -33,7 +33,7 @@ func NewEnclosedSymbolTable(parent *SymbolTable) *SymbolTable {
 func (st *SymbolTable) Define(name string) Symbol {
 	var scope SymbolScope
 
-	if st.parent == nil {
+	if st.Parent == nil {
 		scope = GlobalScope
 	} else {
 		scope = LocalScope
@@ -53,8 +53,8 @@ func (st *SymbolTable) Define(name string) Symbol {
 func (st *SymbolTable) Resolve(name string) (Symbol, bool) {
 	result, ok := st.store[name]
 
-	if !ok && st.parent != nil {
-		return st.parent.Resolve(name)
+	if !ok && st.Parent != nil {
+		return st.Parent.Resolve(name)
 	}
 
 	return result, ok

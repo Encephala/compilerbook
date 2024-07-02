@@ -47,6 +47,8 @@ func (c *Compiler) enterScope() {
 
 	c.scopes = append(c.scopes, scope)
 	c.scopeIndex++
+
+	c.symbols = NewEnclosedSymbolTable(c.symbols)
 }
 
 func (c *Compiler) leaveScope() opcode.Instructions {
@@ -54,6 +56,8 @@ func (c *Compiler) leaveScope() opcode.Instructions {
 
 	c.scopes = c.scopes[:len(c.scopes)-1]
 	c.scopeIndex--
+
+	c.symbols = c.symbols.Parent
 
 	return *instructions
 }
@@ -182,7 +186,11 @@ func (c *Compiler) Compile(node ast.Node) error {
 		}
 
 		symbol := c.symbols.Define(node.Name.Value)
-		c.emit(opcode.OpSetGlobal, symbol.Index)
+		if symbol.Scope == GlobalScope {
+			c.emit(opcode.OpSetGlobal, symbol.Index)
+		} else {
+			c.emit(opcode.OpSetLocal, symbol.Index)
+		}
 
 	case *ast.Identifier:
 		symbol, ok := c.symbols.Resolve(node.Value)
@@ -191,7 +199,11 @@ func (c *Compiler) Compile(node ast.Node) error {
 			return fmt.Errorf("Symbol %q not found", node.Value)
 		}
 
-		c.emit(opcode.OpGetGlobal, symbol.Index)
+		if symbol.Scope == GlobalScope {
+			c.emit(opcode.OpGetGlobal, symbol.Index)
+		} else {
+			c.emit(opcode.OpGetLocal, symbol.Index)
+		}
 
 	case *ast.InfixExpression:
 		if node.Operator[0] == byte('<') {

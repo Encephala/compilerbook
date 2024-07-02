@@ -420,6 +420,7 @@ func TestCompilerScopes(t *testing.T) {
 	if compiler.scopeIndex != 0 {
 		t.Errorf("scopeIndex %d wrong, expected 0", compiler.scopeIndex)
 	}
+	globalSymbols := compiler.symbols
 
 	compiler.emit(opcode.OpMultiply)
 
@@ -440,9 +441,17 @@ func TestCompilerScopes(t *testing.T) {
 		t.Errorf("opcode %d wrong, expected %d", lastInstruction.code, opcode.OpSubtract)
 	}
 
+	if compiler.symbols.Parent != globalSymbols {
+		t.Errorf("compiler's local symbol table has incorrect parent")
+	}
+
 	compiler.leaveScope()
 	if compiler.scopeIndex != 0 {
 		t.Errorf("scopeIndex %d wrong, expected 0", compiler.scopeIndex)
+	}
+
+	if compiler.symbols != globalSymbols || compiler.symbols == nil || compiler.symbols.Parent != nil {
+		t.Errorf("compiler did not set symbol table on scope leave")
 	}
 
 	compiler.emit(opcode.OpAdd)
@@ -523,7 +532,7 @@ func TestLetStatementsScopes(t *testing.T) {
 			},
 		},
 		{
-			input: `fun() {
+			input: `fn() {
 			let num = 55;
 			num
 			}`,
@@ -542,7 +551,7 @@ func TestLetStatementsScopes(t *testing.T) {
 			},
 		},
 		{
-			input: `c = 99
+			input: `let c = 99;
 			fn() {
 			let a = 55;
 			let b = 77;
@@ -553,20 +562,21 @@ func TestLetStatementsScopes(t *testing.T) {
 				55,
 				77,
 				[]opcode.Instruction{
-					opcode.MakeInstruction(opcode.OpGetConstant, 0),
-					opcode.MakeInstruction(opcode.OpSetGlobal, 0),
 					opcode.MakeInstruction(opcode.OpGetConstant, 1),
 					opcode.MakeInstruction(opcode.OpSetLocal, 0),
 					opcode.MakeInstruction(opcode.OpGetConstant, 2),
 					opcode.MakeInstruction(opcode.OpSetLocal, 1),
 					opcode.MakeInstruction(opcode.OpGetLocal, 0),
 					opcode.MakeInstruction(opcode.OpGetLocal, 1),
+					opcode.MakeInstruction(opcode.OpAdd),
 					opcode.MakeInstruction(opcode.OpGetGlobal, 0),
 					opcode.MakeInstruction(opcode.OpAdd),
 					opcode.MakeInstruction(opcode.OpReturnValue),
 				},
 			},
 			expectedInstructions: []opcode.Instruction{
+				opcode.MakeInstruction(opcode.OpGetConstant, 0),
+				opcode.MakeInstruction(opcode.OpSetGlobal, 0),
 				opcode.MakeInstruction(opcode.OpGetConstant, 3),
 				opcode.MakeInstruction(opcode.OpPop),
 			},

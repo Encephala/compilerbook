@@ -74,10 +74,16 @@ func New() *Compiler {
 		previousInstruction: nil,
 	}
 
+	symbols := NewSymbolTable()
+
+	for i, value := range object.Builtins {
+		symbols.DefineBuiltin(i, value.Name)
+	}
+
 	return &Compiler{
 		constants: []object.Object{},
 
-		symbols: NewSymbolTable(),
+		symbols: symbols,
 
 		scopes:     []*CompilationScope{mainScope},
 		scopeIndex: 0,
@@ -85,20 +91,12 @@ func New() *Compiler {
 }
 
 func NewWithState(constants []object.Object, symbols *SymbolTable) *Compiler {
-	mainScope := &CompilationScope{
-		instructions:        &opcode.Instructions{},
-		lastInstruction:     nil,
-		previousInstruction: nil,
-	}
+	result := New()
 
-	return &Compiler{
-		constants: constants,
+	result.constants = constants
+	result.symbols = symbols
 
-		symbols: symbols,
-
-		scopes:     []*CompilationScope{mainScope},
-		scopeIndex: 0,
-	}
+	return result
 }
 
 func (c *Compiler) Bytecode() *Bytecode {
@@ -205,10 +203,18 @@ func (c *Compiler) Compile(node ast.Node) error {
 			return fmt.Errorf("Symbol %q not found", node.Value)
 		}
 
-		if symbol.Scope == GlobalScope {
+		switch symbol.Scope {
+		case GlobalScope:
 			c.emit(opcode.OpGetGlobal, symbol.Index)
-		} else {
+
+		case LocalScope:
 			c.emit(opcode.OpGetLocal, symbol.Index)
+
+		case BuiltinScope:
+			c.emit(opcode.OpGetBuiltin, symbol.Index)
+
+		default:
+			panic(fmt.Sprintf("Unimplemented symbol scope: %d", symbol.Scope))
 		}
 
 	case *ast.InfixExpression:

@@ -79,6 +79,7 @@ const (
 	OpCall
 	OpReturnValue
 	OpReturn // Return null
+	OpGetBuiltin
 )
 
 type OpDefinition struct {
@@ -122,6 +123,7 @@ var definitions = map[OpCode]*OpDefinition{
 	OpCall:        {"OpCall", []int{1}},
 	OpReturnValue: {"OpReturnValue", []int{}},
 	OpReturn:      {"OpReturn", []int{}},
+	OpGetBuiltin:  {"OpGetBuiltin", []int{1}},
 }
 
 // Book passes a byte as code, I pass the OpCode

@@ -1,6 +1,8 @@
 package compiler
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestDefine(t *testing.T) {
 	expected := map[string]Symbol{
@@ -144,6 +146,53 @@ func TestResolveNestedLocal(t *testing.T) {
 			if resolved != symbol {
 				t.Errorf("Symbol %+v resolved wrong, expected %+v",
 					resolved, symbol)
+			}
+		}
+	}
+}
+
+func TestBuiltin(t *testing.T) {
+	global := NewSymbolTable()
+	firstLocal := NewEnclosedSymbolTable(global)
+	secondLocal := NewEnclosedSymbolTable(firstLocal)
+
+	expected := []Symbol{
+		{
+			Name:  "a",
+			Scope: BuiltinScope,
+			Index: 0,
+		},
+		{
+			Name:  "b",
+			Scope: BuiltinScope,
+			Index: 1,
+		},
+		{
+			Name:  "e",
+			Scope: BuiltinScope,
+			Index: 2,
+		},
+		{
+			Name:  "f",
+			Scope: BuiltinScope,
+			Index: 3,
+		},
+	}
+
+	for i, value := range expected {
+		global.DefineBuiltin(i, value.Name)
+	}
+
+	for _, table := range []*SymbolTable{global, firstLocal, secondLocal} {
+		for _, symbol := range expected {
+			result, ok := table.Resolve(symbol.Name)
+
+			if !ok {
+				t.Errorf("name %s not resolvable", symbol.Name)
+			}
+
+			if result != symbol {
+				t.Errorf("Symbol %s resolved to %+v, expected %+v", symbol.Name, result, symbol)
 			}
 		}
 	}

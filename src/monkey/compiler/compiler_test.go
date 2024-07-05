@@ -632,6 +632,44 @@ func TestLetStatementsScopes(t *testing.T) {
 	runCompilerTests(t, tests)
 }
 
+func TestBuiltins(t *testing.T) {
+	tests := []compilerTestCase{
+		{
+			input: `len([]);
+			push([], 1)`,
+			expectedConstants: []interface{}{1},
+			expectedInstructions: []opcode.Instruction{
+				opcode.MakeInstruction(opcode.OpGetBuiltin, 0),
+				opcode.MakeInstruction(opcode.OpArray),
+				opcode.MakeInstruction(opcode.OpCall, 1),
+				opcode.MakeInstruction(opcode.OpPop),
+				opcode.MakeInstruction(opcode.OpGetBuiltin, 5),
+				opcode.MakeInstruction(opcode.OpArray),
+				opcode.MakeInstruction(opcode.OpGetConstant),
+				opcode.MakeInstruction(opcode.OpCall, 2),
+				opcode.MakeInstruction(opcode.OpPop),
+			},
+		},
+		{
+			input: `fn() { len([]) }`,
+			expectedConstants: []interface{}{
+				[]opcode.Instruction{
+					opcode.MakeInstruction(opcode.OpGetBuiltin, 0),
+					opcode.MakeInstruction(opcode.OpArray, 0),
+					opcode.MakeInstruction(opcode.OpCall, 1),
+					opcode.MakeInstruction(opcode.OpReturnValue),
+				},
+			},
+			expectedInstructions: []opcode.Instruction{
+				opcode.MakeInstruction(opcode.OpGetConstant, 0),
+				opcode.MakeInstruction(opcode.OpPop),
+			},
+		},
+	}
+
+	runCompilerTests(t, tests)
+}
+
 func runCompilerTests(t *testing.T, tests []compilerTestCase) {
 	for _, test := range tests {
 		program := parse(test.input)
@@ -671,7 +709,7 @@ func concatInstructions(instructions []opcode.Instruction) opcode.Instructions {
 func testInstructions(expected opcode.Instructions, actual opcode.Instructions) error {
 	if len(expected) != len(actual) {
 		return fmt.Errorf(
-			"Wrong instructions %q, expected %q", actual, expected,
+			"Wrong instructions:\n%q,\n\nexpected:\n%q", actual, expected,
 		)
 	}
 

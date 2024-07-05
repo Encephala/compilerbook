@@ -213,8 +213,11 @@ func (c *Compiler) Compile(node ast.Node) error {
 		case BuiltinScope:
 			c.emit(opcode.OpGetBuiltin, symbol.Index)
 
+		case FreeScope:
+			c.emit(opcode.OpGetFree, symbol.Index)
+
 		default:
-			panic(fmt.Sprintf("Unimplemented symbol scope: %d", symbol.Scope))
+			panic(fmt.Sprintf("Invalid symbol scope: %d", symbol.Scope))
 		}
 
 	case *ast.InfixExpression:
@@ -381,17 +384,32 @@ func (c *Compiler) Compile(node ast.Node) error {
 			c.emit(opcode.OpReturn)
 		}
 
+		// Capture free symbols and number of locals before leaving scope!
+		freeSymbols := c.symbols.FreeSymbols
 		numberOfLocals := c.symbols.Len()
-
 		instructions := c.leaveScope()
+
+		// Load free symbols onto the stack
+		for _, freeSymbol := range freeSymbols {
+			switch freeSymbol.Scope {
+			case LocalScope:
+				c.emit(opcode.OpGetLocal, freeSymbol.Index)
+
+			case FreeScope:
+				c.emit(opcode.OpGetFree, freeSymbol.Index)
+
+			default:
+				panic(fmt.Sprintf("Loading a free symbol with scope %d, that can't be right", freeSymbol.Scope))
+			}
+		}
+
 		result := &object.CompiledFunction{
 			Instructions:       instructions,
 			NumberOfLocals:     numberOfLocals,
 			NumberOfParameters: len(node.Parameters),
 		}
 		index := c.addConstant(result)
-
-		c.emit(opcode.OpMakeClosure, index, 0)
+		c.emit(opcode.OpMakeClosure, index, len(freeSymbols))
 
 	case *ast.ReturnStatement:
 		err := c.Compile(node.ReturnValue)

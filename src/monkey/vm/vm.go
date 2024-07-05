@@ -239,20 +239,34 @@ func (vm *VM) Execute() error {
 			vm.currentFrame().instructionPointer++
 
 			basePointer := vm.stackPointer - numberOfArguments
+			function := vm.stack[basePointer-1]
 
-			function, ok := vm.stack[basePointer-1].(*object.CompiledFunction)
-			if !ok {
-				return fmt.Errorf("TRIED CALLING NON-FUNCTION %v", vm.stack[vm.stackPointer])
+			switch function := function.(type) {
+			case *object.CompiledFunction:
+				if numberOfArguments != function.NumberOfParameters {
+					return fmt.Errorf("wrong number of arguments %d, expected %d", numberOfArguments, function.NumberOfParameters)
+				}
+
+				frame := NewFrame(function, basePointer)
+				vm.pushFrame(frame)
+
+				vm.stackPointer += function.NumberOfLocals
+
+			case *object.Builtin:
+				arguments := vm.stack[basePointer:vm.stackPointer]
+
+				result := function.Fn(arguments...)
+				vm.stackPointer = basePointer - 1
+
+				if result == nil {
+					vm.push(Null)
+				} else {
+					vm.push(result)
+				}
+
+			default:
+				return fmt.Errorf("TRIED CALLING NON-FUNCTION")
 			}
-
-			if numberOfArguments != function.NumberOfParameters {
-				return fmt.Errorf("wrong number of arguments %d, expected %d", numberOfArguments, function.NumberOfParameters)
-			}
-
-			frame := NewFrame(function, basePointer)
-			vm.pushFrame(frame)
-
-			vm.stackPointer += function.NumberOfLocals
 
 		case opcode.OpSetLocal:
 			index := int(instructions[instructionPointer+1])
@@ -288,6 +302,17 @@ func (vm *VM) Execute() error {
 			vm.stackPointer = frame.basePointer
 
 			vm.stack[vm.stackPointer-1] = Null
+
+		case opcode.OpGetBuiltin:
+			index := int(instructions[instructionPointer+1])
+			vm.currentFrame().instructionPointer++
+
+			definition := object.Builtins[index]
+
+			err := vm.push(definition.Builtin)
+			if err != nil {
+				return nil
+			}
 
 		default:
 			panic(fmt.Sprintf("Invalid opcode %q", opcode.Lookup(operation).Name))

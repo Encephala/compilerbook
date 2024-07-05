@@ -11,6 +11,7 @@ func TestMakeInstruction(t *testing.T) {
 		{OpGetConstant, []int{65534}, []byte{byte(OpGetConstant), 255, 254}},
 		{OpAdd, []int{}, []byte{byte(OpAdd)}},
 		{OpGetLocal, []int{255}, []byte{byte(OpGetLocal), 255}},
+		{OpMakeClosure, []int{65534, 255}, []byte{byte(OpMakeClosure), 255, 254, 255}},
 	}
 
 	for _, test := range tests {
@@ -40,12 +41,16 @@ func TestInstructionsString(t *testing.T) {
 		MakeInstruction(OpGetLocal, 1),
 		MakeInstruction(OpGetConstant, 2),
 		MakeInstruction(OpGetConstant, 65535),
+		MakeInstruction(OpMakeClosure, 65535, 255),
+		MakeInstruction(OpPop),
 	}
 
 	expected := `0000 OpAdd
 0001 OpGetLocal 1
 0003 OpGetConstant 2
 0006 OpGetConstant 65535
+0009 OpMakeClosure 65535 255
+0013 OpPop
 `
 
 	concatenated := Instructions{}
@@ -69,6 +74,7 @@ func TestReadOperands(t *testing.T) {
 	}{
 		{OpGetConstant, []int{65535}, 2},
 		{OpGetLocal, []int{128}, 1},
+		{OpMakeClosure, []int{65535, 255}, 3},
 	}
 
 	for _, test := range tests {

@@ -39,7 +39,11 @@ type VM struct {
 
 func New(bytecode *compiler.Bytecode) VM {
 	mainFunction := &object.CompiledFunction{Instructions: bytecode.Instructions}
-	mainFrame := NewFrame(mainFunction, 0)
+	mainClosure := &object.Closure{
+		Function:      mainFunction,
+		FreeVariables: []object.Object{},
+	}
+	mainFrame := NewFrame(mainClosure, 0)
 
 	return VM{
 		constants: bytecode.Constants,
@@ -57,7 +61,11 @@ func New(bytecode *compiler.Bytecode) VM {
 
 func NewWithState(bytecode *compiler.Bytecode, state *[GlobalsSize]object.Object) VM {
 	mainFunction := &object.CompiledFunction{Instructions: bytecode.Instructions}
-	mainFrame := NewFrame(mainFunction, 0)
+	mainClosure := &object.Closure{
+		Function:      mainFunction,
+		FreeVariables: []object.Object{},
+	}
+	mainFrame := NewFrame(mainClosure, 0)
 
 	return VM{
 		constants: bytecode.Constants,
@@ -241,21 +249,21 @@ func (vm *VM) Execute() error {
 			basePointer := vm.stackPointer - numberOfArguments
 			function := vm.stack[basePointer-1]
 
-			switch function := function.(type) {
-			case *object.CompiledFunction:
-				if numberOfArguments != function.NumberOfParameters {
-					return fmt.Errorf("wrong number of arguments %d, expected %d", numberOfArguments, function.NumberOfParameters)
+			switch callee := function.(type) {
+			case *object.Closure:
+				if numberOfArguments != callee.Function.NumberOfParameters {
+					return fmt.Errorf("wrong number of arguments %d, expected %d", numberOfArguments, callee.Function.NumberOfParameters)
 				}
 
-				frame := NewFrame(function, basePointer)
+				frame := NewFrame(callee, basePointer)
 				vm.pushFrame(frame)
 
-				vm.stackPointer += function.NumberOfLocals
+				vm.stackPointer += callee.Function.NumberOfLocals
 
 			case *object.Builtin:
 				arguments := vm.stack[basePointer:vm.stackPointer]
 
-				result := function.Fn(arguments...)
+				result := callee.Fn(arguments...)
 				vm.stackPointer = basePointer - 1
 
 				if result == nil {
@@ -314,6 +322,16 @@ func (vm *VM) Execute() error {
 				return nil
 			}
 
+		case opcode.OpMakeClosure:
+			index := binary.BigEndian.Uint16(instructions[instructionPointer+1:])
+			_ = int(instructions[instructionPointer+3])
+			vm.currentFrame().instructionPointer += 3
+
+			err := vm.pushClosure(int(index))
+			if err != nil {
+				return err
+			}
+
 		default:
 			panic(fmt.Sprintf("Invalid opcode %q", opcode.Lookup(operation).Name))
 		}
@@ -367,6 +385,22 @@ func (vm *VM) popFrame() *Frame {
 
 	vm.frameIndex--
 	return result
+}
+
+func (vm *VM) pushClosure(index int) error {
+	constant := vm.constants[index]
+
+	converted, ok := constant.(*object.CompiledFunction)
+	if !ok {
+		return fmt.Errorf("NOT A FUNCTION: %+v", constant)
+	}
+
+	closure := &object.Closure{
+		Function:      converted,
+		FreeVariables: []object.Object{},
+	}
+
+	return vm.push(closure)
 }
 
 // For tests

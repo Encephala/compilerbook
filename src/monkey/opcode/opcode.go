@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"strings"
 )
 
 type Instruction []byte
@@ -33,11 +34,23 @@ func fmtInstruction(definition *OpDefinition, operands []int) string {
 	switch len(operands) {
 	case 0:
 		return definition.Name
+
 	case 1:
 		return fmt.Sprintf("%s %d", definition.Name, operands[0])
 
 	default:
-		panic(fmt.Sprintf("Invalid operand count %d for %s\n", len(operands), definition.Name))
+		var result strings.Builder
+
+		result.WriteString(definition.Name + " ")
+
+		for i, operand := range operands {
+			result.WriteString(fmt.Sprintf("%d", operand))
+			if i != len(operands)-1 {
+				result.WriteString(" ")
+			}
+		}
+
+		return result.String()
 	}
 }
 
@@ -80,6 +93,7 @@ const (
 	OpReturnValue
 	OpReturn // Return null
 	OpGetBuiltin
+	OpMakeClosure
 )
 
 type OpDefinition struct {
@@ -124,6 +138,7 @@ var definitions = map[OpCode]*OpDefinition{
 	OpReturnValue: {"OpReturnValue", []int{}},
 	OpReturn:      {"OpReturn", []int{}},
 	OpGetBuiltin:  {"OpGetBuiltin", []int{1}},
+	OpMakeClosure: {"OpMakeClosure", []int{2, 1}},
 }
 
 // Book passes a byte as code, I pass the OpCode

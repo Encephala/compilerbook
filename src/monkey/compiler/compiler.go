@@ -391,7 +391,7 @@ func (c *Compiler) Compile(node ast.Node) error {
 		}
 		index := c.addConstant(result)
 
-		c.emit(opcode.OpGetConstant, index)
+		c.emit(opcode.OpMakeClosure, index, 0)
 
 	case *ast.ReturnStatement:
 		err := c.Compile(node.ReturnValue)

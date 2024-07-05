@@ -379,7 +379,7 @@ func TestFunctions(t *testing.T) {
 					opcode.MakeInstruction(opcode.OpReturnValue),
 				}},
 			expectedInstructions: []opcode.Instruction{
-				opcode.MakeInstruction(opcode.OpGetConstant, 2),
+				opcode.MakeInstruction(opcode.OpMakeClosure, 2, 0),
 				opcode.MakeInstruction(opcode.OpPop),
 			},
 		},
@@ -395,7 +395,7 @@ func TestFunctions(t *testing.T) {
 					opcode.MakeInstruction(opcode.OpReturnValue),
 				}},
 			expectedInstructions: []opcode.Instruction{
-				opcode.MakeInstruction(opcode.OpGetConstant, 2),
+				opcode.MakeInstruction(opcode.OpMakeClosure, 2, 0),
 				opcode.MakeInstruction(opcode.OpPop),
 			},
 		},
@@ -406,7 +406,7 @@ func TestFunctions(t *testing.T) {
 					opcode.MakeInstruction(opcode.OpReturn),
 				}},
 			expectedInstructions: []opcode.Instruction{
-				opcode.MakeInstruction(opcode.OpGetConstant, 0),
+				opcode.MakeInstruction(opcode.OpMakeClosure, 0, 0),
 				opcode.MakeInstruction(opcode.OpPop),
 			},
 		},
@@ -484,7 +484,7 @@ func TestFunctionCalls(t *testing.T) {
 				},
 			},
 			expectedInstructions: []opcode.Instruction{
-				opcode.MakeInstruction(opcode.OpGetConstant, 1),
+				opcode.MakeInstruction(opcode.OpMakeClosure, 1, 0),
 				opcode.MakeInstruction(opcode.OpCall, 0),
 				opcode.MakeInstruction(opcode.OpPop),
 			},
@@ -500,7 +500,7 @@ func TestFunctionCalls(t *testing.T) {
 				},
 			},
 			expectedInstructions: []opcode.Instruction{
-				opcode.MakeInstruction(opcode.OpGetConstant, 1),
+				opcode.MakeInstruction(opcode.OpMakeClosure, 1, 0),
 				opcode.MakeInstruction(opcode.OpSetGlobal, 0),
 				opcode.MakeInstruction(opcode.OpGetGlobal, 0),
 				opcode.MakeInstruction(opcode.OpCall, 0),
@@ -518,7 +518,7 @@ func TestFunctionCalls(t *testing.T) {
 				69,
 			},
 			expectedInstructions: []opcode.Instruction{
-				opcode.MakeInstruction(opcode.OpGetConstant, 0),
+				opcode.MakeInstruction(opcode.OpMakeClosure, 0, 0),
 				opcode.MakeInstruction(opcode.OpSetGlobal, 0),
 				opcode.MakeInstruction(opcode.OpGetGlobal, 0),
 				opcode.MakeInstruction(opcode.OpGetConstant, 1),
@@ -543,7 +543,7 @@ func TestFunctionCalls(t *testing.T) {
 				0,
 			},
 			expectedInstructions: []opcode.Instruction{
-				opcode.MakeInstruction(opcode.OpGetConstant, 0),
+				opcode.MakeInstruction(opcode.OpMakeClosure, 0, 0),
 				opcode.MakeInstruction(opcode.OpSetGlobal, 0),
 				opcode.MakeInstruction(opcode.OpGetGlobal, 0),
 				opcode.MakeInstruction(opcode.OpGetConstant, 1),
@@ -573,7 +573,7 @@ func TestLetStatementsScopes(t *testing.T) {
 			expectedInstructions: []opcode.Instruction{
 				opcode.MakeInstruction(opcode.OpGetConstant, 0),
 				opcode.MakeInstruction(opcode.OpSetGlobal, 0),
-				opcode.MakeInstruction(opcode.OpGetConstant, 1),
+				opcode.MakeInstruction(opcode.OpMakeClosure, 1, 0),
 				opcode.MakeInstruction(opcode.OpPop),
 			},
 		},
@@ -592,7 +592,7 @@ func TestLetStatementsScopes(t *testing.T) {
 				},
 			},
 			expectedInstructions: []opcode.Instruction{
-				opcode.MakeInstruction(opcode.OpGetConstant, 1),
+				opcode.MakeInstruction(opcode.OpMakeClosure, 1, 0),
 				opcode.MakeInstruction(opcode.OpPop),
 			},
 		},
@@ -623,7 +623,7 @@ func TestLetStatementsScopes(t *testing.T) {
 			expectedInstructions: []opcode.Instruction{
 				opcode.MakeInstruction(opcode.OpGetConstant, 0),
 				opcode.MakeInstruction(opcode.OpSetGlobal, 0),
-				opcode.MakeInstruction(opcode.OpGetConstant, 3),
+				opcode.MakeInstruction(opcode.OpMakeClosure, 3, 0),
 				opcode.MakeInstruction(opcode.OpPop),
 			},
 		},
@@ -661,7 +661,7 @@ func TestBuiltins(t *testing.T) {
 				},
 			},
 			expectedInstructions: []opcode.Instruction{
-				opcode.MakeInstruction(opcode.OpGetConstant, 0),
+				opcode.MakeInstruction(opcode.OpMakeClosure, 0, 0),
 				opcode.MakeInstruction(opcode.OpPop),
 			},
 		},

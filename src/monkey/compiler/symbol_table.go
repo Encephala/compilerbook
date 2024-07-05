@@ -7,6 +7,7 @@ const (
 	LocalScope
 	BuiltinScope
 	FreeScope
+	CurrentFunctionScope
 )
 
 type Symbol struct {
@@ -71,6 +72,7 @@ func (st *SymbolTable) DefineBuiltin(index int, name string) Symbol {
 }
 
 func (st *SymbolTable) Resolve(name string) (Symbol, bool) {
+	// fmt.Printf("Resolving symbol %q\n", name)
 	result, ok := st.store[name]
 
 	if !ok && st.Parent != nil {
@@ -101,6 +103,18 @@ func (st *SymbolTable) defineFree(original Symbol) Symbol {
 	}
 
 	st.store[symbol.Name] = symbol
+
+	return symbol
+}
+
+func (st *SymbolTable) DefineFunctionName(name string) Symbol {
+	symbol := Symbol{
+		Name:  name,
+		Scope: CurrentFunctionScope,
+		Index: 0,
+	}
+
+	st.store[name] = symbol
 
 	return symbol
 }

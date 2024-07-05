@@ -401,7 +401,7 @@ func TestBuiltins(t *testing.T) {
 		},
 		{`len([1, 2, 3])`, 3},
 		{`len([])`, 0},
-		{`puts("hello", "world!")`, Null},
+		{`puts("hello", "world!")`, Null}, // Lmayo this actually prints to console if tests fail
 		{`first([1, 2, 3])`, 1},
 		{`first([])`, Null},
 		{`first(1)`,
@@ -501,6 +501,55 @@ func TestClosures(t *testing.T) {
 	runVmTests(t, tests)
 }
 
+func TestRecursiveFunctions(t *testing.T) {
+	tests := []vmTestCase{
+		{
+			input: `let countDown = fn(start) {
+				if (start == 0) { return 0; }
+				else { countDown(start - 1); }
+			};
+
+			countDown(1);`,
+			expected: 0,
+		},
+		{
+			input: `let countDown = fn(x) {
+				if (x == 0) {
+					return 0;
+				} else {
+					countDown(x - 1);
+				}
+			};
+
+			let wrapper = fn() {
+				countDown(1);
+			};
+			wrapper();
+			`,
+			expected: 0,
+		},
+		{
+			input: `let wrapper = fn() {
+				let countDown = fn(x) {
+					if (x == 0) {
+					return 0;
+					} else {
+					countDown(x - 1);
+					}
+				};
+
+				countDown(1);
+			};
+
+			wrapper();
+			`,
+			expected: 0,
+		},
+	}
+
+	runVmTests(t, tests)
+}
+
 func runVmTests(t *testing.T, tests []vmTestCase) {
 	for _, test := range tests {
 		program := parse(test.input)
@@ -509,7 +558,7 @@ func runVmTests(t *testing.T, tests []vmTestCase) {
 
 		err := compiler.Compile(program)
 		if err != nil {
-			t.Fatalf("Failed to execute: %s\n", err)
+			t.Fatalf("Failed to compile: %s\n", err)
 		}
 
 		vm := New(compiler.Bytecode())

@@ -784,6 +784,73 @@ func TestClosures(t *testing.T) {
 	runCompilerTests(t, tests)
 }
 
+func TestRecursiveFunctions(t *testing.T) {
+	tests := []compilerTestCase{
+		{
+			input: `let countDown = fn(x) { countDown(x - 1) };
+			countDown(1);`,
+			expectedConstants: []interface{}{
+				1,
+				[]opcode.Instruction{
+					opcode.MakeInstruction(opcode.OpRecurse),
+					opcode.MakeInstruction(opcode.OpGetLocal, 0),
+					opcode.MakeInstruction(opcode.OpGetConstant, 0),
+					opcode.MakeInstruction(opcode.OpSubtract),
+					opcode.MakeInstruction(opcode.OpCall, 1),
+					opcode.MakeInstruction(opcode.OpReturnValue),
+				},
+				1,
+			},
+			expectedInstructions: []opcode.Instruction{
+				opcode.MakeInstruction(opcode.OpMakeClosure, 1, 0),
+				opcode.MakeInstruction(opcode.OpSetGlobal, 0),
+				opcode.MakeInstruction(opcode.OpGetGlobal, 0),
+				opcode.MakeInstruction(opcode.OpGetConstant, 2),
+				opcode.MakeInstruction(opcode.OpCall, 1),
+				opcode.MakeInstruction(opcode.OpPop),
+			},
+		},
+		{
+			input: `let wrapper = fn() {
+				let countDown = fn(x) { countDown(x - 1); };
+				countDown(1);
+			};
+
+			wrapper();
+			`,
+			expectedConstants: []interface{}{
+				1,
+				[]opcode.Instruction{
+					opcode.MakeInstruction(opcode.OpRecurse),
+					opcode.MakeInstruction(opcode.OpGetLocal, 0),
+					opcode.MakeInstruction(opcode.OpGetConstant, 0),
+					opcode.MakeInstruction(opcode.OpSubtract),
+					opcode.MakeInstruction(opcode.OpCall, 1),
+					opcode.MakeInstruction(opcode.OpReturnValue),
+				},
+				1,
+				[]opcode.Instruction{
+					opcode.MakeInstruction(opcode.OpMakeClosure, 1, 0),
+					opcode.MakeInstruction(opcode.OpSetLocal, 0),
+					opcode.MakeInstruction(opcode.OpGetLocal, 0),
+					opcode.MakeInstruction(opcode.OpGetConstant, 2),
+					opcode.MakeInstruction(opcode.OpCall, 1),
+					opcode.MakeInstruction(opcode.OpReturnValue),
+				},
+			},
+			expectedInstructions: []opcode.Instruction{
+				opcode.MakeInstruction(opcode.OpMakeClosure, 3, 0),
+				opcode.MakeInstruction(opcode.OpSetGlobal, 0),
+				opcode.MakeInstruction(opcode.OpGetGlobal, 0),
+				opcode.MakeInstruction(opcode.OpCall, 0),
+				opcode.MakeInstruction(opcode.OpPop),
+			},
+		},
+	}
+
+	runCompilerTests(t, tests)
+}
+
 func runCompilerTests(t *testing.T, tests []compilerTestCase) {
 	for _, test := range tests {
 		program := parse(test.input)

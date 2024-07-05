@@ -156,7 +156,7 @@ func (c *Compiler) Compile(node ast.Node) error {
 		} else {
 			err = c.Compile(node.Alternative)
 			if err != nil {
-				return nil
+				return err
 			}
 			if c.currentScope().lastInstruction.code == opcode.OpPop {
 				c.removeLastInstruction()
@@ -179,17 +179,17 @@ func (c *Compiler) Compile(node ast.Node) error {
 		for _, statement := range node.Statements {
 			err = c.Compile(statement)
 			if err != nil {
-				return nil
+				return err
 			}
 		}
 
 	case *ast.LetStatement:
+		symbol := c.symbols.Define(node.Name.Value)
 		err := c.Compile(node.Value)
 		if err != nil {
-			return nil
+			return err
 		}
 
-		symbol := c.symbols.Define(node.Name.Value)
 		if symbol.Scope == GlobalScope {
 			c.emit(opcode.OpSetGlobal, symbol.Index)
 		} else {
@@ -216,6 +216,9 @@ func (c *Compiler) Compile(node ast.Node) error {
 		case FreeScope:
 			c.emit(opcode.OpGetFree, symbol.Index)
 
+		case CurrentFunctionScope:
+			c.emit(opcode.OpRecurse)
+
 		default:
 			panic(fmt.Sprintf("Invalid symbol scope: %d", symbol.Scope))
 		}
@@ -225,22 +228,22 @@ func (c *Compiler) Compile(node ast.Node) error {
 			// Switch order of operands, so we can reuse OpGreater
 			err := c.Compile(node.Right)
 			if err != nil {
-				return nil
+				return err
 			}
 
 			err = c.Compile(node.Left)
 			if err != nil {
-				return nil
+				return err
 			}
 		} else {
 			err := c.Compile(node.Left)
 			if err != nil {
-				return nil
+				return err
 			}
 
 			err = c.Compile(node.Right)
 			if err != nil {
-				return nil
+				return err
 			}
 		}
 
@@ -270,7 +273,7 @@ func (c *Compiler) Compile(node ast.Node) error {
 	case *ast.PrefixExpression:
 		err := c.Compile(node.Right)
 		if err != nil {
-			return nil
+			return err
 		}
 
 		switch node.Operator {
@@ -360,6 +363,10 @@ func (c *Compiler) Compile(node ast.Node) error {
 			c.symbols.Define(parameter.TokenLiteral())
 		}
 
+		if node.Name != nil {
+			c.symbols.DefineFunctionName(*node.Name)
+		}
+
 		err := c.Compile(node.Body)
 		if err != nil {
 			return err
@@ -414,7 +421,7 @@ func (c *Compiler) Compile(node ast.Node) error {
 	case *ast.ReturnStatement:
 		err := c.Compile(node.ReturnValue)
 		if err != nil {
-			return nil
+			return err
 		}
 
 		c.emit(opcode.OpReturnValue)
@@ -422,7 +429,7 @@ func (c *Compiler) Compile(node ast.Node) error {
 	case *ast.CallExpression:
 		err := c.Compile(node.Function)
 		if err != nil {
-			return nil
+			return err
 		}
 
 		for _, argument := range node.Arguments {

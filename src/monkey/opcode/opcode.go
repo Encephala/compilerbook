@@ -95,6 +95,7 @@ const (
 	OpReturn // Return null
 	OpGetBuiltin
 	OpMakeClosure
+	OpRecurse
 )
 
 type OpDefinition struct {
@@ -141,6 +142,7 @@ var definitions = map[OpCode]*OpDefinition{
 	OpReturn:      {"OpReturn", []int{}},
 	OpGetBuiltin:  {"OpGetBuiltin", []int{1}},
 	OpMakeClosure: {"OpMakeClosure", []int{2, 1}},
+	OpRecurse:     {"OpRecurse", []int{}},
 }
 
 // Book passes a byte as code, I pass the OpCode

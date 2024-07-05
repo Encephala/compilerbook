@@ -343,6 +343,13 @@ func (vm *VM) Execute() error {
 				return err
 			}
 
+		case opcode.OpRecurse:
+			currentClosure := vm.currentFrame().closure
+			err := vm.push(currentClosure)
+			if err != nil {
+				return err
+			}
+
 		default:
 			panic(fmt.Sprintf("Invalid opcode %q", opcode.Lookup(operation).Name))
 		}

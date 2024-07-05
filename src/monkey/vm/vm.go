@@ -324,10 +324,21 @@ func (vm *VM) Execute() error {
 
 		case opcode.OpMakeClosure:
 			index := binary.BigEndian.Uint16(instructions[instructionPointer+1:])
-			_ = int(instructions[instructionPointer+3])
+			numberOfFreeVariables := int(instructions[instructionPointer+3])
 			vm.currentFrame().instructionPointer += 3
 
-			err := vm.pushClosure(int(index))
+			err := vm.pushClosure(int(index), numberOfFreeVariables)
+			if err != nil {
+				return err
+			}
+
+		case opcode.OpGetFree:
+			index := int(instructions[instructionPointer+1])
+			vm.currentFrame().instructionPointer++
+
+			variable := vm.currentFrame().closure.FreeVariables[index]
+
+			err := vm.push(variable)
 			if err != nil {
 				return err
 			}
@@ -387,7 +398,7 @@ func (vm *VM) popFrame() *Frame {
 	return result
 }
 
-func (vm *VM) pushClosure(index int) error {
+func (vm *VM) pushClosure(index int, numberOfFreeVariables int) error {
 	constant := vm.constants[index]
 
 	converted, ok := constant.(*object.CompiledFunction)
@@ -395,9 +406,13 @@ func (vm *VM) pushClosure(index int) error {
 		return fmt.Errorf("NOT A FUNCTION: %+v", constant)
 	}
 
+	freeVariables := make([]object.Object, numberOfFreeVariables)
+	copy(freeVariables, vm.stack[vm.stackPointer-numberOfFreeVariables:vm.stackPointer])
+	vm.stackPointer -= numberOfFreeVariables
+
 	closure := &object.Closure{
 		Function:      converted,
-		FreeVariables: []object.Object{},
+		FreeVariables: freeVariables,
 	}
 
 	return vm.push(closure)
